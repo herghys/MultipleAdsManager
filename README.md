@@ -1,2 +1,2 @@
 # MultipleAdsManager
-Multiple Ads Manager
+Multiple Ads Manager for Unity
