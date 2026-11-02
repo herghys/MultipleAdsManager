@@ -334,6 +334,19 @@ namespace Herghys.MultipleAdsManager
             wasBannerVisibleBeforeFullScreen[position] = false;
         }
 
+        public void ShowAllBanners()
+        {
+            ShowBanner(BannerPosition.Top);
+            ShowBanner(BannerPosition.Bottom);
+        }
+
+        public void ShowTopBanner(string placement = null) => ShowBanner(BannerPosition.Top, placement);
+        public void ShowBottomBanner(string placement = null) => ShowBanner(BannerPosition.Bottom, placement);
+        public void HideTopBanner() => HideBanner(BannerPosition.Top);
+        public void HideBottomBanner() => HideBanner(BannerPosition.Bottom);
+
+        public bool AreBannersVisible => IsBannerVisible(BannerPosition.Top) || IsBannerVisible(BannerPosition.Bottom);
+
         public void HideAllBanners()
         {
             foreach (BannerPosition pos in Enum.GetValues(typeof(BannerPosition)))
