@@ -53,6 +53,15 @@ Add the package to your project's `Packages/manifest.json` under `dependencies`:
 
 ---
 
+### 3. Via Unity Package (`.unitypackage`)
+
+1. Go to the [GitHub Releases](https://github.com/herghys/MultipleAdsManager/releases) page.
+2. Download the `.unitypackage` file (e.g., `MultipleAdsManager-1.0.0.unitypackage`).
+3. In Unity, go to **Assets** > **Import Package** > **Custom Package...** (or double-click the downloaded file while your Unity project is open).
+4. In the import dialog, ensure all assets are selected and click **Import**.
+
+---
+
 ## License
 
 This project is licensed under the [MIT License](LICENSE.md).
