@@ -1,0 +1,9 @@
+# ========================================================
+# Unity LevelPlay (IronSource) Mediation SDK ProGuard Rules
+# ========================================================
+-keepclassmembers class com.ironsource.sdk.controller.IronSourceWebView$JSInterface {
+    public *;
+}
+-dontwarn com.ironsource.**
+-keep class com.ironsource.mediationsdk.** { *; }
+-keep class com.ironsource.lifecycle.** { *; }

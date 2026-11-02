@@ -1,0 +1,23 @@
+﻿using UnityEngine;
+using Herghys.MultipleAdsManager.Runtime;
+
+namespace Herghys.MultipleAdsManager.Modules
+{
+    [CreateAssetMenu(fileName = "AppLovinConfig", menuName = "MultipleAds/AppLovin Config", order = 30)]
+    public class AppLovinConfig : BaseAdConfig
+    {
+        public AppLovinConfig()
+        {
+            networkName = "AppLovin";
+            networkType = AdNetworkType.AppLovin;
+            enabled = true;
+            appName = "Default Apps";
+            appStoreDetails = "com.DefaultCompany.DefaultApps";
+            androidAppId = "";
+            iosAppId = "";
+            bannerWeight = 50;
+            interstitialWeight = 50;
+            rewardedWeight = 50;
+        }
+    }
+}

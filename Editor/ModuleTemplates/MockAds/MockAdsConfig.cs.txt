@@ -1,0 +1,23 @@
+﻿using UnityEngine;
+using Herghys.MultipleAdsManager.Runtime;
+
+namespace Herghys.MultipleAdsManager.Modules
+{
+    [CreateAssetMenu(fileName = "MockAdsConfig", menuName = "MultipleAds/Mock Ads Config", order = 90)]
+    public class MockAdsConfig : BaseAdConfig
+    {
+        public MockAdsConfig()
+        {
+            networkName = "MockAds";
+            networkType = AdNetworkType.Mock;
+            enabled = true;
+            appName = "Default Apps";
+            appStoreDetails = "com.DefaultCompany.DefaultApps";
+            androidAppId = "mock-app-id";
+            iosAppId = "mock-app-id";
+            bannerWeight = 20;
+            interstitialWeight = 20;
+            rewardedWeight = 20;
+        }
+    }
+}

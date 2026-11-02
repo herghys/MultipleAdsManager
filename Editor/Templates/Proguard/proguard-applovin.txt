@@ -1,0 +1,5 @@
+# ========================================================
+# AppLovin MAX SDK ProGuard Rules
+# ========================================================
+-dontwarn com.applovin.**
+-keep class com.applovin.** { *; }

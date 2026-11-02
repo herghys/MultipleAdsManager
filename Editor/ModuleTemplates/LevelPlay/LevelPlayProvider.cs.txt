@@ -1,0 +1,397 @@
+﻿using System;
+using System.Collections.Generic;
+using UnityEngine;
+using Herghys.MultipleAdsManager.Runtime;
+
+#if LEVELPLAY_ADS && LEVELPLAY_SDK_INSTALLED
+using com.unity3d.mediation;
+#endif
+
+namespace Herghys.MultipleAdsManager.Modules
+{
+    public class LevelPlayProvider : IAdProvider
+    {
+        public string NetworkName => "LevelPlay";
+        public AdNetworkType NetworkType => AdNetworkType.LevelPlay;
+        public bool IsInitialized => isInitialized;
+
+        public int BannerWeight { get; set; } = 50;
+        public int InterstitialWeight { get; set; } = 50;
+        public int RewardedWeight { get; set; } = 50;
+
+        public bool IsBannerSupported => true;
+
+#if LEVELPLAY_ADS && LEVELPLAY_SDK_INSTALLED
+        public bool IsInterstitialReady => interstitialAd != null && interstitialAd.IsAdReady();
+        public bool IsRewardedReady => rewardedAd != null && rewardedAd.IsAdReady();
+#else
+        public bool IsInterstitialReady => false;
+        public bool IsRewardedReady => false;
+#endif
+
+        public event Action<IAdsType> OnAdLoaded;
+        public event Action<IAdsType, string> OnAdFailedToLoad;
+        public event Action<IAdsType> OnAdShown;
+        public event Action<IAdsType> OnAdClosed;
+        public event Action OnRewardEarned;
+        public event Action<AdReward> OnRewardEarnedWithReward;
+
+        private bool isInitialized = false;
+
+#if LEVELPLAY_ADS && LEVELPLAY_SDK_INSTALLED
+        private readonly Dictionary<BannerPosition, LevelPlayBannerAd> bannerViews = new Dictionary<BannerPosition, LevelPlayBannerAd>();
+        private LevelPlayInterstitialAd interstitialAd;
+        private LevelPlayRewardedAd rewardedAd;
+
+        private Action onCurrentInterstitialClosed;
+        private Action onCurrentRewardedClosed;
+        private Action<AdReward> onCurrentRewardEarned;
+
+        private string lastInterstitialAdUnitId;
+        private string lastInterstitialPlacement;
+        private string lastRewardedAdUnitId;
+        private string lastRewardedPlacement;
+#endif
+
+        public int GetWeight(IAdsType adType)
+        {
+            switch (adType)
+            {
+                case IAdsType.Banner: return BannerWeight;
+                case IAdsType.Interstitial: return InterstitialWeight;
+                case IAdsType.Rewarded: return RewardedWeight;
+                default: return 50;
+            }
+        }
+
+        public void SetWeight(IAdsType adType, int weight)
+        {
+            switch (adType)
+            {
+                case IAdsType.Banner: BannerWeight = weight; break;
+                case IAdsType.Interstitial: InterstitialWeight = weight; break;
+                case IAdsType.Rewarded: RewardedWeight = weight; break;
+            }
+        }
+
+        public int GetWeight(AdType adType) => GetWeight((IAdsType)adType);
+        public void SetWeight(AdType adType, int weight) => SetWeight((IAdsType)adType, weight);
+
+        public void Initialize(BaseAdConfig config, List<string> testDeviceIds, bool targetAdsForChildren = false, Action<bool> onInitialized = null)
+        {
+            if (config != null)
+            {
+                BannerWeight = config.BannerWeight;
+                InterstitialWeight = config.InterstitialWeight;
+                RewardedWeight = config.RewardedWeight;
+            }
+
+#if LEVELPLAY_ADS && LEVELPLAY_SDK_INSTALLED
+            if (targetAdsForChildren)
+            {
+                IronSource.Agent.setMetaData("is_child_directed", "true");
+            }
+
+            Unity.Services.LevelPlay.LevelPlay.OnInitSuccess += (cfg) =>
+            {
+                isInitialized = true;
+                Debug.Log("[LevelPlayProvider] LevelPlay SDK initialized successfully.");
+                onInitialized?.Invoke(true);
+            };
+
+            Unity.Services.LevelPlay.LevelPlay.OnInitFailed += (err) =>
+            {
+                Debug.LogError($"[LevelPlayProvider] LevelPlay initialization failed: {err.ErrorMessage}");
+                onInitialized?.Invoke(false);
+            };
+
+            Unity.Services.LevelPlay.LevelPlay.Init(config?.AppId ?? "");
+#elif LEVELPLAY_ADS
+            Debug.LogWarning("[LevelPlayProvider] LEVELPLAY_ADS is enabled, but LevelPlay SDK is not yet detected/installed. Running in stub mode. Config remains active.");
+            isInitialized = true;
+            onInitialized?.Invoke(true);
+#else
+            Debug.LogWarning("[LevelPlayProvider] LEVELPLAY_ADS scripting symbol is not defined. LevelPlay (IronSource) is running in stub mode.");
+            isInitialized = true;
+            onInitialized?.Invoke(true);
+#endif
+        }
+
+        #region Banner (All Positions)
+
+#if LEVELPLAY_ADS && LEVELPLAY_SDK_INSTALLED
+        private LevelPlayBannerPosition ConvertPosition(BannerPosition position)
+        {
+            switch (position)
+            {
+                case BannerPosition.Top:
+                case BannerPosition.TopLeft:
+                case BannerPosition.TopRight:
+                    return LevelPlayBannerPosition.TopCenter;
+                case BannerPosition.Center:
+                    return LevelPlayBannerPosition.Centered;
+                case BannerPosition.Bottom:
+                case BannerPosition.BottomLeft:
+                case BannerPosition.BottomRight:
+                default:
+                    return LevelPlayBannerPosition.BottomCenter;
+            }
+        }
+#endif
+
+        public void ShowBanner(BannerPosition position, string adUnitId = null, string placement = null)
+        {
+#if LEVELPLAY_ADS && LEVELPLAY_SDK_INSTALLED
+            if (string.IsNullOrEmpty(adUnitId))
+            {
+                Debug.LogWarning($"[LevelPlayProvider] Banner ad unit ID for {position} is empty.");
+                return;
+            }
+
+            var pos = ConvertPosition(position);
+
+            var bannerConfig = new LevelPlayBannerAd.Config.Builder()
+                .SetSize(LevelPlayAdSize.BANNER)
+                .SetPosition(pos)
+                .SetPlacementName(placement ?? "Default")
+                .SetDisplayOnLoad(true)
+                .Build();
+
+            if (bannerViews.TryGetValue(position, out var existingBanner) && existingBanner != null)
+            {
+                existingBanner.DestroyAd();
+            }
+
+            var bannerView = new LevelPlayBannerAd(adUnitId, bannerConfig);
+            bannerView.OnAdLoaded += info => OnAdLoaded?.Invoke(IAdsType.Banner);
+            bannerView.OnAdLoadFailed += error => OnAdFailedToLoad?.Invoke(IAdsType.Banner, error.ErrorMessage);
+            bannerView.OnAdDisplayed += info => OnAdShown?.Invoke(IAdsType.Banner);
+            bannerViews[position] = bannerView;
+            bannerView.LoadAd();
+#else
+            Debug.Log($"[LevelPlayProvider-Stub] ShowBanner ({position}, ID: {adUnitId}, Placement: {placement})");
+#endif
+        }
+
+        public void HideBanner(BannerPosition position)
+        {
+#if LEVELPLAY_ADS && LEVELPLAY_SDK_INSTALLED
+            if (bannerViews.TryGetValue(position, out var bannerView) && bannerView != null)
+            {
+                bannerView.HideAd();
+            }
+#endif
+        }
+
+        public void DestroyBanner(BannerPosition position)
+        {
+#if LEVELPLAY_ADS && LEVELPLAY_SDK_INSTALLED
+            if (bannerViews.TryGetValue(position, out var bannerView) && bannerView != null)
+            {
+                bannerView.DestroyAd();
+                bannerViews.Remove(position);
+            }
+#endif
+        }
+
+        #endregion
+
+        #region Interstitial
+
+        public void LoadInterstitial(string adUnitId = null, string placement = null)
+        {
+#if LEVELPLAY_ADS && LEVELPLAY_SDK_INSTALLED
+            if (string.IsNullOrEmpty(adUnitId)) return;
+
+            lastInterstitialAdUnitId = adUnitId;
+            lastInterstitialPlacement = placement;
+
+            if (interstitialAd != null)
+            {
+                interstitialAd.DestroyAd();
+                interstitialAd = null;
+            }
+
+            interstitialAd = new LevelPlayInterstitialAd(adUnitId);
+            AttachInterstitialEvents(interstitialAd);
+            interstitialAd.LoadAd();
+#endif
+        }
+
+        public void ShowInterstitial(Action onClosed = null)
+        {
+            ShowInterstitial(null, null, onClosed);
+        }
+
+        public void ShowInterstitial(string adUnitId, string placement, Action onClosed = null)
+        {
+#if LEVELPLAY_ADS && LEVELPLAY_SDK_INSTALLED
+            if (IsInterstitialReady)
+            {
+                onCurrentInterstitialClosed = onClosed;
+                interstitialAd.ShowAd(placement);
+            }
+            else
+            {
+                onClosed?.Invoke();
+                if (!string.IsNullOrEmpty(adUnitId)) LoadInterstitial(adUnitId, placement);
+            }
+#else
+            Debug.Log($"[LevelPlayProvider-Stub] ShowInterstitial (ID: {adUnitId}, Placement: {placement})");
+            onClosed?.Invoke();
+#endif
+        }
+
+#if LEVELPLAY_ADS && LEVELPLAY_SDK_INSTALLED
+        private void AttachInterstitialEvents(LevelPlayInterstitialAd ad)
+        {
+            ad.OnAdLoaded += info =>
+            {
+                Debug.Log("[LevelPlayProvider] Interstitial Loaded.");
+                OnAdLoaded?.Invoke(IAdsType.Interstitial);
+            };
+
+            ad.OnAdLoadFailed += error =>
+            {
+                Debug.LogWarning($"[LevelPlayProvider] Interstitial Load Failed: {error.ErrorMessage}");
+                OnAdFailedToLoad?.Invoke(IAdsType.Interstitial, error.ErrorMessage);
+            };
+
+            ad.OnAdDisplayed += info =>
+            {
+                Debug.Log("[LevelPlayProvider] Interstitial Displayed.");
+                OnAdShown?.Invoke(IAdsType.Interstitial);
+            };
+
+            ad.OnAdClosed += info =>
+            {
+                Debug.Log("[LevelPlayProvider] Interstitial Closed.");
+                OnAdClosed?.Invoke(IAdsType.Interstitial);
+                onCurrentInterstitialClosed?.Invoke();
+                onCurrentInterstitialClosed = null;
+
+                if (!string.IsNullOrEmpty(lastInterstitialAdUnitId))
+                {
+                    LoadInterstitial(lastInterstitialAdUnitId, lastInterstitialPlacement);
+                }
+            };
+
+            ad.OnAdDisplayFailed += (error, info) =>
+            {
+                Debug.LogWarning($"[LevelPlayProvider] Interstitial Display Failed: {error.ErrorMessage}");
+                onCurrentInterstitialClosed?.Invoke();
+                onCurrentInterstitialClosed = null;
+            };
+        }
+#endif
+
+        #endregion
+
+        #region Rewarded
+
+        public void LoadRewarded(string adUnitId = null, string placement = null)
+        {
+#if LEVELPLAY_ADS && LEVELPLAY_SDK_INSTALLED
+            if (string.IsNullOrEmpty(adUnitId)) return;
+
+            lastRewardedAdUnitId = adUnitId;
+            lastRewardedPlacement = placement;
+
+            if (rewardedAd != null)
+            {
+                rewardedAd.DestroyAd();
+                rewardedAd = null;
+            }
+
+            rewardedAd = new LevelPlayRewardedAd(adUnitId);
+            AttachRewardedEvents(rewardedAd);
+            rewardedAd.LoadAd();
+#endif
+        }
+
+        public void ShowRewarded(Action onRewardEarned, Action onClosed = null)
+        {
+            ShowRewarded(null, null, onRewardEarned, onClosed);
+        }
+
+        public void ShowRewarded(string adUnitId, string placement, Action onRewardEarned, Action onClosed = null)
+        {
+            ShowRewarded(adUnitId, placement, (reward) => onRewardEarned?.Invoke(), onClosed);
+        }
+
+        public void ShowRewarded(string adUnitId, string placement, Action<AdReward> onRewardEarned, Action onClosed = null)
+        {
+#if LEVELPLAY_ADS && LEVELPLAY_SDK_INSTALLED
+            if (IsRewardedReady)
+            {
+                onCurrentRewardedClosed = onClosed;
+                onCurrentRewardEarned = onRewardEarned;
+                rewardedAd.ShowAd(placement);
+            }
+            else
+            {
+                onClosed?.Invoke();
+                if (!string.IsNullOrEmpty(adUnitId)) LoadRewarded(adUnitId, placement);
+            }
+#else
+            Debug.Log($"[LevelPlayProvider-Stub] ShowRewarded (ID: {adUnitId}, Placement: {placement})");
+            onRewardEarned?.Invoke(new AdReward("StubReward", 1));
+            onClosed?.Invoke();
+#endif
+        }
+
+#if LEVELPLAY_ADS && LEVELPLAY_SDK_INSTALLED
+        private void AttachRewardedEvents(LevelPlayRewardedAd ad)
+        {
+            ad.OnAdLoaded += info =>
+            {
+                Debug.Log("[LevelPlayProvider] Rewarded Ad Loaded.");
+                OnAdLoaded?.Invoke(IAdsType.Rewarded);
+            };
+
+            ad.OnAdLoadFailed += error =>
+            {
+                Debug.LogWarning($"[LevelPlayProvider] Rewarded Ad Load Failed: {error.ErrorMessage}");
+                OnAdFailedToLoad?.Invoke(IAdsType.Rewarded, error.ErrorMessage);
+            };
+
+            ad.OnAdDisplayed += info =>
+            {
+                Debug.Log("[LevelPlayProvider] Rewarded Ad Displayed.");
+                OnAdShown?.Invoke(IAdsType.Rewarded);
+            };
+
+            ad.OnAdRewarded += (reward, info) =>
+            {
+                var adReward = new AdReward(reward.Name, reward.Amount);
+                Debug.Log($"[LevelPlayProvider] User earned reward: {adReward.ItemName} x {adReward.Amount}");
+                OnRewardEarned?.Invoke();
+                OnRewardEarnedWithReward?.Invoke(adReward);
+                onCurrentRewardEarned?.Invoke(adReward);
+            };
+
+            ad.OnAdClosed += info =>
+            {
+                Debug.Log("[LevelPlayProvider] Rewarded Ad Closed.");
+                OnAdClosed?.Invoke(IAdsType.Rewarded);
+                onCurrentRewardedClosed?.Invoke();
+                onCurrentRewardedClosed = null;
+
+                if (!string.IsNullOrEmpty(lastRewardedAdUnitId))
+                {
+                    LoadRewarded(lastRewardedAdUnitId, lastRewardedPlacement);
+                }
+            };
+
+            ad.OnAdDisplayFailed += (error, info) =>
+            {
+                Debug.LogWarning($"[LevelPlayProvider] Rewarded Ad Display Failed: {error.ErrorMessage}");
+                onCurrentRewardedClosed?.Invoke();
+                onCurrentRewardedClosed = null;
+            };
+        }
+#endif
+
+        #endregion
+    }
+}

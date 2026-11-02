@@ -1,0 +1,34 @@
+﻿using UnityEngine;
+using Herghys.MultipleAdsManager.Runtime;
+
+namespace Herghys.MultipleAdsManager.Modules
+{
+    [CreateAssetMenu(fileName = "LevelPlayConfig", menuName = "MultipleAds/LevelPlay (IronSource) Config", order = 20)]
+    public class LevelPlayConfig : BaseAdConfig
+    {
+        [Header("LevelPlay App Keys")]
+        [Tooltip("Your LevelPlay / ironSource application key from the LevelPlay dashboard.")]
+        [SerializeField] private string androidAppKey = "";
+        [SerializeField] private string iosAppKey = "";
+
+        public LevelPlayConfig()
+        {
+            networkName = "LevelPlay";
+            networkType = AdNetworkType.LevelPlay;
+            enabled = true;
+            appName = "Default Apps";
+            appStoreDetails = "com.DefaultCompany.DefaultApps";
+            androidAppKey = "";
+            androidAppId = "";
+            iosAppKey = "";
+            iosAppId = "";
+            bannerWeight = 50;
+            interstitialWeight = 50;
+            rewardedWeight = 50;
+        }
+
+        public string AndroidAppKey { get => androidAppKey; set { androidAppKey = value; androidAppId = value; } }
+        public string IosAppKey { get => iosAppKey; set { iosAppKey = value; iosAppId = value; } }
+        public string AppKey => Application.platform == RuntimePlatform.IPhonePlayer ? iosAppKey : androidAppKey;
+    }
+}

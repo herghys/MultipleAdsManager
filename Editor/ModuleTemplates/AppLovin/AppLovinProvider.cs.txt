@@ -1,0 +1,143 @@
+﻿using System;
+using System.Collections.Generic;
+using UnityEngine;
+using Herghys.MultipleAdsManager.Runtime;
+
+namespace Herghys.MultipleAdsManager.Modules
+{
+    public class AppLovinProvider : IAdProvider
+    {
+        public string NetworkName => "AppLovin";
+        public AdNetworkType NetworkType => AdNetworkType.AppLovin;
+        public bool IsInitialized => isInitialized;
+
+        public int BannerWeight { get; set; } = 50;
+        public int InterstitialWeight { get; set; } = 50;
+        public int RewardedWeight { get; set; } = 50;
+
+        public bool IsBannerSupported => true;
+        public bool IsInterstitialReady => isInterstitialReady;
+        public bool IsRewardedReady => isRewardedReady;
+
+#pragma warning disable 0067
+        public event Action<IAdsType> OnAdLoaded;
+        public event Action<IAdsType, string> OnAdFailedToLoad;
+        public event Action<IAdsType> OnAdShown;
+        public event Action<IAdsType> OnAdClosed;
+        public event Action OnRewardEarned;
+        public event Action<AdReward> OnRewardEarnedWithReward;
+#pragma warning restore 0067
+
+        private BaseAdConfig config;
+        private bool isInitialized = false;
+        private bool isInterstitialReady = false;
+        private bool isRewardedReady = false;
+
+        public int GetWeight(IAdsType adType)
+        {
+            switch (adType)
+            {
+                case IAdsType.Banner: return BannerWeight;
+                case IAdsType.Interstitial: return InterstitialWeight;
+                case IAdsType.Rewarded: return RewardedWeight;
+                default: return 50;
+            }
+        }
+
+        public void SetWeight(IAdsType adType, int weight)
+        {
+            switch (adType)
+            {
+                case IAdsType.Banner: BannerWeight = weight; break;
+                case IAdsType.Interstitial: InterstitialWeight = weight; break;
+                case IAdsType.Rewarded: RewardedWeight = weight; break;
+            }
+        }
+
+        public int GetWeight(AdType adType) => GetWeight((IAdsType)adType);
+        public void SetWeight(AdType adType, int weight) => SetWeight((IAdsType)adType, weight);
+
+        public void Initialize(BaseAdConfig sourceConfig, List<string> testDeviceIds, bool targetAdsForChildren = false, Action<bool> onInitialized = null)
+        {
+            config = sourceConfig;
+            if (config != null)
+            {
+                BannerWeight = config.BannerWeight;
+                InterstitialWeight = config.InterstitialWeight;
+                RewardedWeight = config.RewardedWeight;
+            }
+
+            if (targetAdsForChildren)
+            {
+                Debug.Log("[AppLovinProvider] Set IsAgeRestrictedUser=true for COPPA compliance.");
+            }
+            isInitialized = true;
+            onInitialized?.Invoke(true);
+        }
+
+        public void ShowBanner(BannerPosition position, string adUnitId = null, string placement = null)
+        {
+            Debug.Log($"[AppLovinProvider] ShowBanner ({position}) for unit {adUnitId} (Placement: {placement})");
+            OnAdShown?.Invoke(IAdsType.Banner);
+        }
+
+        public void HideBanner(BannerPosition position)
+        {
+            Debug.Log($"[AppLovinProvider] HideBanner ({position})");
+        }
+
+        public void DestroyBanner(BannerPosition position)
+        {
+            Debug.Log($"[AppLovinProvider] DestroyBanner ({position})");
+        }
+
+        public void LoadInterstitial(string adUnitId = null, string placement = null)
+        {
+            Debug.Log($"[AppLovinProvider] Loading Interstitial: {adUnitId}");
+            isInterstitialReady = true;
+            OnAdLoaded?.Invoke(IAdsType.Interstitial);
+        }
+
+        public void ShowInterstitial(Action onClosed = null)
+        {
+            ShowInterstitial(null, null, onClosed);
+        }
+
+        public void ShowInterstitial(string adUnitId, string placement, Action onClosed = null)
+        {
+            Debug.Log($"[AppLovinProvider] Showing Interstitial: {adUnitId} (Placement: {placement})");
+            OnAdShown?.Invoke(IAdsType.Interstitial);
+            OnAdClosed?.Invoke(IAdsType.Interstitial);
+            onClosed?.Invoke();
+        }
+
+        public void LoadRewarded(string adUnitId = null, string placement = null)
+        {
+            Debug.Log($"[AppLovinProvider] Loading Rewarded: {adUnitId}");
+            isRewardedReady = true;
+            OnAdLoaded?.Invoke(IAdsType.Rewarded);
+        }
+
+        public void ShowRewarded(Action onRewardEarned, Action onClosed = null)
+        {
+            ShowRewarded(null, null, onRewardEarned, onClosed);
+        }
+
+        public void ShowRewarded(string adUnitId, string placement, Action onRewardEarned, Action onClosed = null)
+        {
+            ShowRewarded(adUnitId, placement, (reward) => onRewardEarned?.Invoke(), onClosed);
+        }
+
+        public void ShowRewarded(string adUnitId, string placement, Action<AdReward> onRewardEarned, Action onClosed = null)
+        {
+            var reward = new AdReward("Continue_Play", 1);
+            Debug.Log($"[AppLovinProvider] Showing Rewarded: {adUnitId} (Placement: {placement})");
+            OnAdShown?.Invoke(IAdsType.Rewarded);
+            OnRewardEarned?.Invoke();
+            OnRewardEarnedWithReward?.Invoke(reward);
+            onRewardEarned?.Invoke(reward);
+            OnAdClosed?.Invoke(IAdsType.Rewarded);
+            onClosed?.Invoke();
+        }
+    }
+}

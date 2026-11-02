@@ -1,0 +1,5 @@
+# ========================================================
+# Vungle / Liftoff SDK ProGuard Rules
+# ========================================================
+-dontwarn com.vungle.**
+-keep class com.vungle.** { *; }

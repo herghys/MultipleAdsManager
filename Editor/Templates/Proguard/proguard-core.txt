@@ -1,0 +1,8 @@
+# ========================================================
+# MultipleAds Core ProGuard / R8 Optimization Rules
+# ========================================================
+-keepattributes *Annotation*
+-keepattributes SourceFile,LineNumberTable
+-keepclassmembers class * implements android.os.IInterface {
+    <methods>;
+}

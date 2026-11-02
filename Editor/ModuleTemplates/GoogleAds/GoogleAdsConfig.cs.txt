@@ -1,0 +1,23 @@
+﻿using UnityEngine;
+using Herghys.MultipleAdsManager.Runtime;
+
+namespace Herghys.MultipleAdsManager.Modules
+{
+    [CreateAssetMenu(fileName = "GoogleAdsConfig", menuName = "MultipleAds/Google Ads Config", order = 10)]
+    public class GoogleAdsConfig : BaseAdConfig
+    {
+        public GoogleAdsConfig()
+        {
+            networkName = "GoogleMobileAds";
+            networkType = AdNetworkType.GoogleAds;
+            enabled = true;
+            appName = "Default Apps";
+            appStoreDetails = "com.DefaultCompany.DefaultApps";
+            androidAppId = "";
+            iosAppId = "";
+            bannerWeight = 50;
+            interstitialWeight = 50;
+            rewardedWeight = 50;
+        }
+    }
+}

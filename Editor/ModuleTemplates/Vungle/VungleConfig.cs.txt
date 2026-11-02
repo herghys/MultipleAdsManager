@@ -1,0 +1,23 @@
+﻿using UnityEngine;
+using Herghys.MultipleAdsManager.Runtime;
+
+namespace Herghys.MultipleAdsManager.Modules
+{
+    [CreateAssetMenu(fileName = "VungleConfig", menuName = "MultipleAds/Vungle Config", order = 40)]
+    public class VungleConfig : BaseAdConfig
+    {
+        public VungleConfig()
+        {
+            networkName = "Vungle";
+            networkType = AdNetworkType.Vungle;
+            enabled = true;
+            appName = "Default Apps";
+            appStoreDetails = "com.DefaultCompany.DefaultApps";
+            androidAppId = "";
+            iosAppId = "";
+            bannerWeight = 50;
+            interstitialWeight = 50;
+            rewardedWeight = 50;
+        }
+    }
+}

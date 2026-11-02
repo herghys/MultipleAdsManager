@@ -1,0 +1,7 @@
+# ========================================================
+# Google Mobile Ads SDK ProGuard Rules
+# ========================================================
+-keep class com.google.unity.** { *; }
+-keep public class com.google.android.gms.ads.** { public *; }
+-keep public class com.google.ads.** { public *; }
+-dontwarn com.google.android.libraries.ads.mobile.sdk.**
