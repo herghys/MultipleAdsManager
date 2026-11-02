@@ -15,6 +15,7 @@ namespace Herghys.MultipleAdsManager.Editor
 
         protected virtual void OnEnable()
         {
+            MultipleAdsConfigGenerator.LoadCheck(showDialog: false);
             LoadOrCreateConfig();
             minSize = new Vector2(480, 520);
         }
@@ -138,6 +139,7 @@ namespace Herghys.MultipleAdsManager.Editor
 
         public static void TriggerManualScan()
         {
+            MultipleAdsConfigGenerator.AutoScanAndCreateConfigs(forceRescan: true, showDialog: false);
             MultipleAdsPackageManager.Scan();
 
             var config = MultipleAdsConfigGenerator.GetConfig();

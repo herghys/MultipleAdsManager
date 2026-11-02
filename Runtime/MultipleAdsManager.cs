@@ -155,7 +155,19 @@ namespace Herghys.MultipleAdsManager
                 BaseAdConfig mockConfig = config != null ? config.GetConfig(AdNetworkType.Mock) : null;
                 if (mockConfig == null)
                 {
-                    mockConfig = Resources.Load<BaseAdConfig>("Config/MockAppConfig");
+#if UNITY_EDITOR
+                    string mockPath = MultipleAdsPaths.GetProviderConfigAssetPath("MockAdsConfig");
+                    mockConfig = UnityEditor.AssetDatabase.LoadAssetAtPath<BaseAdConfig>(mockPath);
+                    if (mockConfig == null)
+                    {
+                        string[] guids = UnityEditor.AssetDatabase.FindAssets("MockAdsConfig t:ScriptableObject");
+                        if (guids != null && guids.Length > 0)
+                        {
+                            mockConfig = UnityEditor.AssetDatabase.LoadAssetAtPath<BaseAdConfig>(UnityEditor.AssetDatabase.GUIDToAssetPath(guids[0]));
+                        }
+                    }
+#endif
+                    if (mockConfig == null) mockConfig = Resources.Load<BaseAdConfig>("Config/MockAppConfig");
                     if (mockConfig == null) mockConfig = Resources.Load<BaseAdConfig>("Config/MockAdsConfig");
                     if (mockConfig == null) mockConfig = Resources.Load<BaseAdConfig>("MockAdsConfig");
                 }

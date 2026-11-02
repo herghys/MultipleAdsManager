@@ -12,6 +12,22 @@ namespace Herghys.MultipleAdsManager.Editor
     {
         private List<ModuleUIState> moduleStates = null;
 
+        private static GUIStyle rightBoldLabel;
+        private static GUIStyle RightBoldLabel
+        {
+            get
+            {
+                if (rightBoldLabel == null)
+                {
+                    rightBoldLabel = new GUIStyle(EditorStyles.boldLabel)
+                    {
+                        alignment = TextAnchor.MiddleRight
+                    };
+                }
+                return rightBoldLabel;
+            }
+        }
+
         protected override void OnEnable()
         {
             base.OnEnable();
@@ -23,6 +39,7 @@ namespace Herghys.MultipleAdsManager.Editor
         public void RescanModules()
         {
             BuildTargetGroup target = MultipleAdsBuildTargetCompat.SelectedBuildTargetGroup;
+            MultipleAdsConfigGenerator.AutoScanAndCreateConfigs(forceRescan: true);
             moduleStates = ModuleUIState.ScanAll(target);
         }
 
@@ -128,30 +145,58 @@ namespace Herghys.MultipleAdsManager.Editor
 
             GUILayout.Space(6);
 
-            EditorGUILayout.BeginVertical(GUILayout.Width(170));
+            EditorGUILayout.BeginVertical(GUILayout.Width(200));
+
+            const float actionBtnWidth = 94f;
+            const float singleRowWidth = 192f; // 94 + 4 + 94
 
             if (module.IsDefault)
             {
                 EditorGUILayout.BeginHorizontal();
-                GUILayout.Label("Default Module", EditorStyles.boldLabel, GUILayout.Width(85));
-                if (GUILayout.Button("Open Config", EditorStyles.miniButton, GUILayout.Width(80), GUILayout.Height(20)))
+                GUILayout.FlexibleSpace();
+                GUILayout.Label("Default Module", RightBoldLabel, GUILayout.Height(20));
+                GUILayout.Space(6);
+                if (state.Config != null)
                 {
-                    OpenConfig(state.Config);
+                    if (GUILayout.Button("Open Config", EditorStyles.miniButton, GUILayout.Width(actionBtnWidth), GUILayout.Height(20)))
+                    {
+                        OpenConfig(state.Config);
+                    }
+                }
+                else
+                {
+                    if (GUILayout.Button(new GUIContent("Add Config", $"Create missing AdsConfig for {module.DisplayName}"), EditorStyles.miniButton, GUILayout.Width(actionBtnWidth), GUILayout.Height(20)))
+                    {
+                        state.Config = MultipleAdsConfigGenerator.EnsureProviderConfig(module, mainConfig, saveAssets: true);
+                        if (state.Config != null)
+                        {
+                            OpenConfig(state.Config);
+                        }
+                        GUIUtility.ExitGUI();
+                    }
                 }
                 EditorGUILayout.EndHorizontal();
             }
             else if (!state.IsAdded)
             {
-                GUILayout.Label("Not Added", EditorStyles.boldLabel);
+                EditorGUILayout.BeginHorizontal();
+                GUILayout.FlexibleSpace();
+                GUILayout.Label("Not Added", RightBoldLabel, GUILayout.Height(20));
+                EditorGUILayout.EndHorizontal();
+
+                EditorGUILayout.Space(2);
 
                 EditorGUILayout.BeginHorizontal();
-                if (GUILayout.Button("+ Add", GUILayout.Width(82), GUILayout.Height(22)))
+                GUILayout.FlexibleSpace();
+                if (GUILayout.Button("+ Add", GUILayout.Width(actionBtnWidth), GUILayout.Height(22)))
                 {
                     PromptAddModule(module, downloadFromRemote: false);
                     GUIUtility.ExitGUI();
                 }
 
-                if (GUILayout.Button("Branch ▾", GUILayout.Width(82), GUILayout.Height(22)))
+                GUILayout.Space(4);
+
+                if (GUILayout.Button("Branch ▾", GUILayout.Width(actionBtnWidth), GUILayout.Height(22)))
                 {
                     GenericMenu menu = new GenericMenu();
                     menu.AddItem(new GUIContent("Add from Local Template"), false, () => PromptAddModule(module, false));
@@ -163,17 +208,37 @@ namespace Herghys.MultipleAdsManager.Editor
             else
             {
                 EditorGUILayout.BeginHorizontal();
-                GUILayout.Label(state.HasDefine ? "Enabled" : "Disabled", EditorStyles.boldLabel, GUILayout.Width(85));
+                GUILayout.FlexibleSpace();
+                GUILayout.Label(state.HasDefine ? "Enabled" : "Disabled", RightBoldLabel, GUILayout.Height(20));
+                GUILayout.Space(6);
 
-                if (GUILayout.Button("Open Config", EditorStyles.miniButton, GUILayout.Width(80), GUILayout.Height(20)))
+                if (state.Config != null)
                 {
-                    OpenConfig(state.Config);
+                    if (GUILayout.Button("Open Config", EditorStyles.miniButton, GUILayout.Width(actionBtnWidth), GUILayout.Height(20)))
+                    {
+                        OpenConfig(state.Config);
+                    }
+                }
+                else
+                {
+                    if (GUILayout.Button(new GUIContent("Add Config", $"Create missing AdsConfig for {module.DisplayName}"), EditorStyles.miniButton, GUILayout.Width(actionBtnWidth), GUILayout.Height(20)))
+                    {
+                        state.Config = MultipleAdsConfigGenerator.EnsureProviderConfig(module, mainConfig, saveAssets: true);
+                        if (state.Config != null)
+                        {
+                            OpenConfig(state.Config);
+                        }
+                        GUIUtility.ExitGUI();
+                    }
                 }
                 EditorGUILayout.EndHorizontal();
 
+                EditorGUILayout.Space(2);
+
                 EditorGUILayout.BeginHorizontal();
+                GUILayout.FlexibleSpace();
                 string btnText = state.HasDefine ? "Disable" : "Enable";
-                if (GUILayout.Button(btnText, GUILayout.Width(82), GUILayout.Height(22)))
+                if (GUILayout.Button(btnText, GUILayout.Width(actionBtnWidth), GUILayout.Height(22)))
                 {
                     if (state.HasDefine)
                     {
@@ -189,7 +254,9 @@ namespace Herghys.MultipleAdsManager.Editor
                     GUIUtility.ExitGUI();
                 }
 
-                if (GUILayout.Button("Remove", GUILayout.Width(82), GUILayout.Height(22)))
+                GUILayout.Space(4);
+
+                if (GUILayout.Button("Remove", GUILayout.Width(actionBtnWidth), GUILayout.Height(22)))
                 {
                     string sdkWarning = !string.IsNullOrEmpty(module.PackageId) ? $"\nIts SDK package ({module.PackageId}) will also be removed from Packages/manifest.json." : "";
                     if (EditorUtility.DisplayDialog($"Remove {module.DisplayName} Module",
@@ -207,12 +274,15 @@ namespace Herghys.MultipleAdsManager.Editor
                 if (!string.IsNullOrEmpty(module.PackageId) && !state.IsEffectiveInstalled)
                 {
                     EditorGUILayout.Space(2);
-                    if (GUILayout.Button($"Install SDK ({module.PackageId})", EditorStyles.miniButton, GUILayout.Height(20)))
+                    EditorGUILayout.BeginHorizontal();
+                    GUILayout.FlexibleSpace();
+                    if (GUILayout.Button(new GUIContent("Install SDK", $"Install package {module.PackageId} via UPM"), EditorStyles.miniButton, GUILayout.Width(singleRowWidth), GUILayout.Height(20)))
                     {
-                        MultipleAdsPackageManager.AddPackage(module.PackageId, module.PackageVersion, module.ScopedRegistry);
+                        MultipleAdsPackageManager.InstallSdkForModule(module, target);
                         RescanModules();
                         GUIUtility.ExitGUI();
                     }
+                    EditorGUILayout.EndHorizontal();
                 }
             }
 

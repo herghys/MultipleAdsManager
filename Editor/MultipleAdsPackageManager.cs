@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -81,24 +81,31 @@ namespace Herghys.MultipleAdsManager.Editor
                 return present;
             }
 
-            Type t = Type.GetType(typeName);
-            if (t != null)
+            string[] types = typeName.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (var raw in types)
             {
-                _typePresentCache[typeName] = true;
-                return true;
-            }
+                string tName = raw.Trim();
+                if (string.IsNullOrEmpty(tName)) continue;
 
-            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
-            {
-                try
+                Type t = Type.GetType(tName);
+                if (t != null)
                 {
-                    if (assembly.GetType(typeName, false, true) != null)
-                    {
-                        _typePresentCache[typeName] = true;
-                        return true;
-                    }
+                    _typePresentCache[typeName] = true;
+                    return true;
                 }
-                catch { }
+
+                foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    try
+                    {
+                        if (assembly.GetType(tName, false, true) != null)
+                        {
+                            _typePresentCache[typeName] = true;
+                            return true;
+                        }
+                    }
+                    catch { }
+                }
             }
 
             _typePresentCache[typeName] = false;
@@ -165,6 +172,46 @@ namespace Herghys.MultipleAdsManager.Editor
             return IsSdkInstalledAuto(module);
         }
 
+        public static bool InstallSdkForModule(AdsModuleDefinition module, BuildTargetGroup targetGroup = BuildTargetGroup.Unknown)
+        {
+            if (module == null) return false;
+            if (targetGroup == BuildTargetGroup.Unknown)
+                targetGroup = MultipleAdsBuildTargetCompat.SelectedBuildTargetGroup;
+
+            Debug.Log($"[MultipleAdsPackageManager] Installing ads provider SDK for {module.DisplayName}...");
+
+            if (!string.IsNullOrEmpty(module.PackageId))
+            {
+                AddPackage(module.PackageId, module.PackageVersion, module.ScopedRegistry);
+            }
+
+            // Ensure module template files exist in project
+            MultipleAdsModuleManager.EnsureModuleFiles(module);
+
+            // Auto-enable define symbols
+            var list = MultipleAdsBuildTargetCompat.GetDefinesList(targetGroup);
+            bool changed = false;
+            if (!string.IsNullOrEmpty(module.DefineSymbol) && !list.Contains(module.DefineSymbol))
+            {
+                list.Add(module.DefineSymbol);
+                changed = true;
+            }
+            if (!string.IsNullOrEmpty(module.SdkInstalledSymbol) && !list.Contains(module.SdkInstalledSymbol))
+            {
+                list.Add(module.SdkInstalledSymbol);
+                changed = true;
+            }
+            if (changed)
+            {
+                MultipleAdsBuildTargetCompat.SetScriptingDefineSymbols(targetGroup, list);
+            }
+
+            // Auto-scan and auto-create AdsConfig
+            MultipleAdsConfigGenerator.AutoScanAndCreateConfigs(forceRescan: true);
+            AssetDatabase.Refresh();
+            return true;
+        }
+
         public static bool SyncSdkInstalledDefines(BuildTargetGroup targetGroup = BuildTargetGroup.Unknown)
         {
             if (targetGroup == BuildTargetGroup.Unknown)
@@ -180,6 +227,19 @@ namespace Herghys.MultipleAdsManager.Editor
 
                 bool moduleEnabled = defineList.Contains(module.DefineSymbol);
                 bool sdkPresent = IsSdkInstalled(module);
+
+                if (sdkPresent && !module.IsDefault)
+                {
+                    MultipleAdsModuleManager.EnsureModuleFiles(module);
+                    if (!moduleEnabled)
+                    {
+                        defineList.Add(module.DefineSymbol);
+                        moduleEnabled = true;
+                        changed = true;
+                        Debug.Log($"[MultipleAdsPackageManager] Detected active SDK for {module.DisplayName}. Auto-enabled module define '{module.DefineSymbol}'.");
+                    }
+                }
+
                 bool shouldHaveInstalledDefine = moduleEnabled && sdkPresent;
 
                 if (shouldHaveInstalledDefine && !defineList.Contains(module.SdkInstalledSymbol))
@@ -684,17 +744,5 @@ namespace Herghys.MultipleAdsManager.Editor
         }
 
         #endregion
-    }
-
-    [InitializeOnLoad]
-    public static class MultipleAdsSdkDefineWatcher
-    {
-        static MultipleAdsSdkDefineWatcher()
-        {
-            EditorApplication.delayCall += () =>
-            {
-                MultipleAdsPackageManager.SyncSdkInstalledDefines(EditorUserBuildSettings.selectedBuildTargetGroup);
-            };
-        }
     }
 }

@@ -73,7 +73,7 @@ namespace Herghys.MultipleAdsManager.Editor
                 Description = "Unity LevelPlay mediation wrapper supporting App Key initialization and placements.",
                 DefineSymbol = "LEVELPLAY_ADS",
                 SdkInstalledSymbol = "LEVELPLAY_SDK_INSTALLED",
-                SdkTypeCheck = "com.unity3d.mediation.LevelPlay",
+                SdkTypeCheck = "Unity.Services.LevelPlay.LevelPlay, com.unity3d.mediation.LevelPlay",
                 NetworkType = AdNetworkType.LevelPlay,
                 IsDefault = false,
                 PackageId = "com.unity.services.levelplay",
@@ -147,6 +147,7 @@ namespace Herghys.MultipleAdsManager.Editor
         {
             var def = GetModule(moduleId);
             if (def == null) return false;
+            if (def.IsDefault) return true;
 
             string moduleDir = MultipleAdsPaths.GetModuleDirectory(moduleId);
             if (!Directory.Exists(moduleDir)) return false;
@@ -155,6 +156,35 @@ namespace Herghys.MultipleAdsManager.Editor
             string providerPath = Path.Combine(moduleDir, def.ProviderFileName).Replace('\\', '/');
 
             return File.Exists(configPath) && File.Exists(providerPath);
+        }
+
+        public static bool EnsureModuleFiles(string moduleId)
+        {
+            var def = GetModule(moduleId);
+            return EnsureModuleFiles(def);
+        }
+
+        public static bool EnsureModuleFiles(AdsModuleDefinition def)
+        {
+            if (def == null || def.IsDefault) return false;
+
+            string targetDir = MultipleAdsPaths.GetModuleDirectory(def.Id);
+            if (!Directory.Exists(targetDir))
+            {
+                Directory.CreateDirectory(targetDir);
+            }
+
+            string dstConfig = Path.Combine(targetDir, def.ConfigFileName).Replace('\\', '/');
+            string dstProvider = Path.Combine(targetDir, def.ProviderFileName).Replace('\\', '/');
+
+            if (!File.Exists(dstConfig) || !File.Exists(dstProvider))
+            {
+                InstallFromLocalTemplates(def, targetDir);
+                Debug.Log($"[MultipleAdsModuleManager] Auto-installed module template files for '{def.DisplayName}' into {targetDir}.");
+                return true;
+            }
+
+            return false;
         }
 
         public static void AddModule(string moduleId, bool autoInstallSdk = true, bool downloadFromRemote = false, Action<bool> onComplete = null)
@@ -186,15 +216,30 @@ namespace Herghys.MultipleAdsManager.Editor
                 Directory.CreateDirectory(targetDir);
             }
 
+            BuildTargetGroup targetGroup = MultipleAdsBuildTargetCompat.SelectedBuildTargetGroup;
+            if (!string.IsNullOrEmpty(def.DefineSymbol))
+            {
+                MultipleAdsBuildTargetCompat.AddDefine(targetGroup, def.DefineSymbol);
+            }
+            if (autoInstallSdk && !string.IsNullOrEmpty(def.SdkInstalledSymbol) && MultipleAdsPackageManager.IsSdkInstalled(def))
+            {
+                MultipleAdsBuildTargetCompat.AddDefine(targetGroup, def.SdkInstalledSymbol);
+            }
+
             if (downloadFromRemote)
             {
-                DownloadFromRemote(def, targetDir, onComplete);
+                DownloadFromRemote(def, targetDir, ok =>
+                {
+                    MultipleAdsConfigGenerator.AutoScanAndCreateConfigs(forceRescan: true);
+                    onComplete?.Invoke(ok);
+                });
             }
             else
             {
                 InstallFromLocalTemplates(def, targetDir);
                 AssetDatabase.Refresh();
                 Debug.Log($"[MultipleAdsModuleManager] Successfully added module '{def.DisplayName}' into {targetDir}.");
+                MultipleAdsConfigGenerator.AutoScanAndCreateConfigs(forceRescan: true);
                 onComplete?.Invoke(true);
             }
         }

@@ -73,14 +73,14 @@ namespace Herghys.MultipleAdsManager.Runtime
 
         public static string GetProviderConfigAssetPath(string providerConfigName)
         {
-            // First check Resources/Config (standard for MockAppConfig)
-            string pluginResPath = $"{PluginResourcesConfigPath}/{providerConfigName}.asset";
-            if (File.Exists(pluginResPath))
-                return pluginResPath;
+            // Primary path in Assets: Assets/MultipleAds/AdsConfig/<name>.asset
+            string primaryPath = $"{AdsConfigPath}/{providerConfigName}.asset";
+            if (File.Exists(primaryPath))
+                return primaryPath;
 
-            string legacyPluginResPath = $"{LegacyPluginResourcesConfigPath}/{providerConfigName}.asset";
-            if (File.Exists(legacyPluginResPath))
-                return legacyPluginResPath;
+            string inConfigsPath = $"{MainConfigsPath}/{providerConfigName}.asset";
+            if (File.Exists(inConfigsPath))
+                return inConfigsPath;
 
             string projectResPath = $"{ProjectResourcesConfigPath}/{providerConfigName}.asset";
             if (File.Exists(projectResPath))
@@ -90,21 +90,22 @@ namespace Herghys.MultipleAdsManager.Runtime
             if (providerConfigName == "MockAdsConfig" || providerConfigName == "MockAppConfig")
             {
                 string altName = providerConfigName == "MockAdsConfig" ? "MockAppConfig" : "MockAdsConfig";
-                string altPluginRes = $"{PluginResourcesConfigPath}/{altName}.asset";
-                if (File.Exists(altPluginRes)) return altPluginRes;
-                string altLegacyRes = $"{LegacyPluginResourcesConfigPath}/{altName}.asset";
-                if (File.Exists(altLegacyRes)) return altLegacyRes;
+                string altPrimary = $"{AdsConfigPath}/{altName}.asset";
+                if (File.Exists(altPrimary)) return altPrimary;
+                string altInConfigs = $"{MainConfigsPath}/{altName}.asset";
+                if (File.Exists(altInConfigs)) return altInConfigs;
                 string altProjectRes = $"{ProjectResourcesConfigPath}/{altName}.asset";
                 if (File.Exists(altProjectRes)) return altProjectRes;
             }
 
-            string primaryPath = $"{AdsConfigPath}/{providerConfigName}.asset";
-            if (File.Exists(primaryPath))
-                return primaryPath;
+            // Fallbacks for legacy paths
+            string legacyPluginResPath = $"{LegacyPluginResourcesConfigPath}/{providerConfigName}.asset";
+            if (File.Exists(legacyPluginResPath))
+                return legacyPluginResPath;
 
-            string inConfigsPath = $"{MainConfigsPath}/{providerConfigName}.asset";
-            if (File.Exists(inConfigsPath))
-                return inConfigsPath;
+            string pluginResPath = $"{PluginResourcesConfigPath}/{providerConfigName}.asset";
+            if (File.Exists(pluginResPath))
+                return pluginResPath;
 
             return primaryPath;
         }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -56,6 +56,18 @@ namespace Herghys.MultipleAdsManager.Editor
 
                 string configPath = MultipleAdsPaths.GetProviderConfigAssetPath($"{mod.Id}Config");
                 var config = AssetDatabase.LoadAssetAtPath<BaseAdConfig>(configPath);
+                if (config == null)
+                {
+                    string[] guids = AssetDatabase.FindAssets($"{mod.Id}Config t:ScriptableObject");
+                    if (guids.Length > 0)
+                    {
+                        config = AssetDatabase.LoadAssetAtPath<BaseAdConfig>(AssetDatabase.GUIDToAssetPath(guids[0]));
+                    }
+                }
+                if (config == null && mod.IsDefault)
+                {
+                    config = MultipleAdsConfigGenerator.EnsureProviderConfig(mod);
+                }
 
                 result.Add(new ModuleUIState
                 {
@@ -102,6 +114,10 @@ namespace Herghys.MultipleAdsManager.Editor
                     {
                         config = AssetDatabase.LoadAssetAtPath<BaseAdConfig>(AssetDatabase.GUIDToAssetPath(guids[0]));
                     }
+                }
+                if (config == null && (isInstalled || isAdded || hasDefine || mod.IsDefault))
+                {
+                    config = MultipleAdsConfigGenerator.EnsureProviderConfig(mod);
                 }
 
                 bool testAdsActive = CheckIfNetworkUsesTestAds(mod.NetworkType);
@@ -168,6 +184,10 @@ namespace Herghys.MultipleAdsManager.Editor
                 {
                     Config = AssetDatabase.LoadAssetAtPath<BaseAdConfig>(AssetDatabase.GUIDToAssetPath(guids[0]));
                 }
+            }
+            if (Config == null && (isInstalled || IsAdded || HasDefine || Definition.IsDefault))
+            {
+                Config = MultipleAdsConfigGenerator.EnsureProviderConfig(Definition);
             }
 
             HasTestAdsActive = CheckIfNetworkUsesTestAds(Definition.NetworkType);

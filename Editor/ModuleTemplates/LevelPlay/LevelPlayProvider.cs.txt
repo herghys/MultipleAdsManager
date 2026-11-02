@@ -1,10 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using Herghys.MultipleAdsManager.Runtime;
 
 #if LEVELPLAY_ADS && LEVELPLAY_SDK_INSTALLED
-using com.unity3d.mediation;
+using Unity.Services.LevelPlay;
 #endif
 
 namespace Herghys.MultipleAdsManager.Modules
@@ -87,11 +87,6 @@ namespace Herghys.MultipleAdsManager.Modules
             }
 
 #if LEVELPLAY_ADS && LEVELPLAY_SDK_INSTALLED
-            if (targetAdsForChildren)
-            {
-                IronSource.Agent.setMetaData("is_child_directed", "true");
-            }
-
             Unity.Services.LevelPlay.LevelPlay.OnInitSuccess += (cfg) =>
             {
                 isInitialized = true;
@@ -129,7 +124,7 @@ namespace Herghys.MultipleAdsManager.Modules
                 case BannerPosition.TopRight:
                     return LevelPlayBannerPosition.TopCenter;
                 case BannerPosition.Center:
-                    return LevelPlayBannerPosition.Centered;
+                    return LevelPlayBannerPosition.Center;
                 case BannerPosition.Bottom:
                 case BannerPosition.BottomLeft:
                 case BannerPosition.BottomRight:
@@ -276,7 +271,7 @@ namespace Herghys.MultipleAdsManager.Modules
                 }
             };
 
-            ad.OnAdDisplayFailed += (error, info) =>
+            ad.OnAdDisplayFailed += (info, error) =>
             {
                 Debug.LogWarning($"[LevelPlayProvider] Interstitial Display Failed: {error.ErrorMessage}");
                 onCurrentInterstitialClosed?.Invoke();
@@ -361,7 +356,7 @@ namespace Herghys.MultipleAdsManager.Modules
                 OnAdShown?.Invoke(IAdsType.Rewarded);
             };
 
-            ad.OnAdRewarded += (reward, info) =>
+            ad.OnAdRewarded += (info, reward) =>
             {
                 var adReward = new AdReward(reward.Name, reward.Amount);
                 Debug.Log($"[LevelPlayProvider] User earned reward: {adReward.ItemName} x {adReward.Amount}");
@@ -383,7 +378,7 @@ namespace Herghys.MultipleAdsManager.Modules
                 }
             };
 
-            ad.OnAdDisplayFailed += (error, info) =>
+            ad.OnAdDisplayFailed += (info, error) =>
             {
                 Debug.LogWarning($"[LevelPlayProvider] Rewarded Ad Display Failed: {error.ErrorMessage}");
                 onCurrentRewardedClosed?.Invoke();

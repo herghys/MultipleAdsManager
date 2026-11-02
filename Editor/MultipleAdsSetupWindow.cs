@@ -20,6 +20,22 @@ namespace Herghys.MultipleAdsManager.Editor
         private MultipleAdsConfig mainConfig;
         private SerializedObject serializedConfig;
 
+        private static GUIStyle rightBoldLabel;
+        private static GUIStyle RightBoldLabel
+        {
+            get
+            {
+                if (rightBoldLabel == null)
+                {
+                    rightBoldLabel = new GUIStyle(EditorStyles.boldLabel)
+                    {
+                        alignment = TextAnchor.MiddleRight
+                    };
+                }
+                return rightBoldLabel;
+            }
+        }
+
         [MenuItem("Window/MultipleAds Full Setup", false, 100)]
         public static void Open()
         {
@@ -49,6 +65,7 @@ namespace Herghys.MultipleAdsManager.Editor
 
         private void OnEnable()
         {
+            MultipleAdsConfigGenerator.LoadCheck(showDialog: false);
             foldoutGlobalApp = EditorPrefs.GetBool(PrefFoldoutGlobalApp, true);
             foldoutPlacements = EditorPrefs.GetBool(PrefFoldoutPlacements, true);
             foldoutAdUnits = EditorPrefs.GetBool(PrefFoldoutAdUnits, true);
@@ -623,30 +640,58 @@ namespace Herghys.MultipleAdsManager.Editor
 
             GUILayout.Space(6);
 
-            EditorGUILayout.BeginVertical(GUILayout.Width(170));
+            EditorGUILayout.BeginVertical(GUILayout.Width(200));
+
+            const float actionBtnWidth = 94f;
+            const float singleRowWidth = 192f; // 94 + 4 + 94
 
             if (module.IsDefault)
             {
                 EditorGUILayout.BeginHorizontal();
-                GUILayout.Label("Default Module", EditorStyles.boldLabel, GUILayout.Width(85));
-                if (GUILayout.Button("Open Config", EditorStyles.miniButton, GUILayout.Width(80), GUILayout.Height(20)))
+                GUILayout.FlexibleSpace();
+                GUILayout.Label("Default Module", RightBoldLabel, GUILayout.Height(20));
+                GUILayout.Space(6);
+                if (state.Config != null)
                 {
-                    OpenConfig(state.Config);
+                    if (GUILayout.Button("Open Config", EditorStyles.miniButton, GUILayout.Width(actionBtnWidth), GUILayout.Height(20)))
+                    {
+                        OpenConfig(state.Config);
+                    }
+                }
+                else
+                {
+                    if (GUILayout.Button(new GUIContent("Add Config", $"Create missing AdsConfig for {module.DisplayName}"), EditorStyles.miniButton, GUILayout.Width(actionBtnWidth), GUILayout.Height(20)))
+                    {
+                        state.Config = MultipleAdsConfigGenerator.EnsureProviderConfig(module, mainConfig, saveAssets: true);
+                        if (state.Config != null)
+                        {
+                            OpenConfig(state.Config);
+                        }
+                        GUIUtility.ExitGUI();
+                    }
                 }
                 EditorGUILayout.EndHorizontal();
             }
             else if (!state.IsAdded)
             {
-                GUILayout.Label("Not Added", EditorStyles.boldLabel);
+                EditorGUILayout.BeginHorizontal();
+                GUILayout.FlexibleSpace();
+                GUILayout.Label("Not Added", RightBoldLabel, GUILayout.Height(20));
+                EditorGUILayout.EndHorizontal();
+
+                EditorGUILayout.Space(2);
 
                 EditorGUILayout.BeginHorizontal();
-                if (GUILayout.Button("+ Add", GUILayout.Width(82), GUILayout.Height(22)))
+                GUILayout.FlexibleSpace();
+                if (GUILayout.Button("+ Add", GUILayout.Width(actionBtnWidth), GUILayout.Height(22)))
                 {
                     PromptAddModule(module, downloadFromRemote: false);
                     GUIUtility.ExitGUI();
                 }
 
-                if (GUILayout.Button("Branch ▾", GUILayout.Width(82), GUILayout.Height(22)))
+                GUILayout.Space(4);
+
+                if (GUILayout.Button("Branch ▾", GUILayout.Width(actionBtnWidth), GUILayout.Height(22)))
                 {
                     GenericMenu menu = new GenericMenu();
                     menu.AddItem(new GUIContent("Add from Local Template"), false, () =>
@@ -664,17 +709,37 @@ namespace Herghys.MultipleAdsManager.Editor
             else
             {
                 EditorGUILayout.BeginHorizontal();
-                GUILayout.Label(state.HasDefine ? "Enabled" : "Disabled", EditorStyles.boldLabel, GUILayout.Width(85));
+                GUILayout.FlexibleSpace();
+                GUILayout.Label(state.HasDefine ? "Enabled" : "Disabled", RightBoldLabel, GUILayout.Height(20));
+                GUILayout.Space(6);
 
-                if (GUILayout.Button("Open Config", EditorStyles.miniButton, GUILayout.Width(80), GUILayout.Height(20)))
+                if (state.Config != null)
                 {
-                    OpenConfig(state.Config);
+                    if (GUILayout.Button("Open Config", EditorStyles.miniButton, GUILayout.Width(actionBtnWidth), GUILayout.Height(20)))
+                    {
+                        OpenConfig(state.Config);
+                    }
+                }
+                else
+                {
+                    if (GUILayout.Button(new GUIContent("Add Config", $"Create missing AdsConfig for {module.DisplayName}"), EditorStyles.miniButton, GUILayout.Width(actionBtnWidth), GUILayout.Height(20)))
+                    {
+                        state.Config = MultipleAdsConfigGenerator.EnsureProviderConfig(module, mainConfig, saveAssets: true);
+                        if (state.Config != null)
+                        {
+                            OpenConfig(state.Config);
+                        }
+                        GUIUtility.ExitGUI();
+                    }
                 }
                 EditorGUILayout.EndHorizontal();
 
+                EditorGUILayout.Space(2);
+
                 EditorGUILayout.BeginHorizontal();
+                GUILayout.FlexibleSpace();
                 string btnText = state.HasDefine ? "Disable" : "Enable";
-                if (GUILayout.Button(btnText, GUILayout.Width(82), GUILayout.Height(22)))
+                if (GUILayout.Button(btnText, GUILayout.Width(actionBtnWidth), GUILayout.Height(22)))
                 {
                     if (state.HasDefine)
                     {
@@ -724,7 +789,9 @@ namespace Herghys.MultipleAdsManager.Editor
                     GUIUtility.ExitGUI();
                 }
 
-                if (GUILayout.Button("Remove", GUILayout.Width(82), GUILayout.Height(22)))
+                GUILayout.Space(4);
+
+                if (GUILayout.Button("Remove", GUILayout.Width(actionBtnWidth), GUILayout.Height(22)))
                 {
                     string sdkWarning = !string.IsNullOrEmpty(module.PackageId) ? $"\nIts SDK package ({module.PackageId}) will also be removed from Packages/manifest.json." : "";
                     if (EditorUtility.DisplayDialog($"Remove {module.DisplayName} Module",
@@ -742,12 +809,15 @@ namespace Herghys.MultipleAdsManager.Editor
                 if (!string.IsNullOrEmpty(module.PackageId) && !state.IsEffectiveInstalled)
                 {
                     EditorGUILayout.Space(2);
-                    if (GUILayout.Button($"Install SDK ({module.PackageId})", EditorStyles.miniButton, GUILayout.Height(20)))
+                    EditorGUILayout.BeginHorizontal();
+                    GUILayout.FlexibleSpace();
+                    if (GUILayout.Button(new GUIContent("Install SDK", $"Install package {module.PackageId} via UPM"), EditorStyles.miniButton, GUILayout.Width(singleRowWidth), GUILayout.Height(20)))
                     {
-                        MultipleAdsPackageManager.AddPackage(module.PackageId, module.PackageVersion, module.ScopedRegistry);
+                        MultipleAdsPackageManager.InstallSdkForModule(module, target);
                         RescanModules();
                         GUIUtility.ExitGUI();
                     }
+                    EditorGUILayout.EndHorizontal();
                 }
             }
 
@@ -1034,36 +1104,48 @@ namespace Herghys.MultipleAdsManager.Editor
 
         private static void SyncSingleProvider(MultipleAdsConfig config, bool isEnabled, string className, string assetName, Action<BaseAdConfig> onInit, AdNetworkType networkType)
         {
+            var module = MultipleAdsModuleManager.AllModules.Find(m => string.Equals($"{m.Id}Config", className, StringComparison.OrdinalIgnoreCase) || m.NetworkType == networkType);
             string path = MultipleAdsPaths.GetProviderConfigAssetPath(assetName);
             var existingAsset = AssetDatabase.LoadAssetAtPath<BaseAdConfig>(path);
+
+            if (existingAsset == null)
+            {
+                string[] guids = AssetDatabase.FindAssets($"{assetName} t:ScriptableObject");
+                if (guids != null && guids.Length > 0)
+                {
+                    string foundPath = AssetDatabase.GUIDToAssetPath(guids[0]);
+                    existingAsset = AssetDatabase.LoadAssetAtPath<BaseAdConfig>(foundPath);
+                }
+            }
 
             if (isEnabled)
             {
                 if (existingAsset == null)
                 {
-                    Type configType = FindTypeInAllAssemblies(className) ?? FindTypeInAllAssemblies($"MultipleAds.Packages.{className}");
-                    if (configType != null)
+                    if (module != null)
                     {
-                        existingAsset = (BaseAdConfig)ScriptableObject.CreateInstance(configType);
-                        onInit?.Invoke(existingAsset);
-
-                        string dir = MultipleAdsPaths.GetAdsConfigDirectory();
-                        if (!Directory.Exists(dir))
-                        {
-                            Directory.CreateDirectory(dir);
-                        }
-
-                        AssetDatabase.CreateAsset(existingAsset, path);
-                        Debug.Log($"[MultipleAdsSetupWindow] Created {assetName} at {path}");
+                        existingAsset = MultipleAdsConfigGenerator.EnsureProviderConfig(module, config, false);
                     }
-                }
-                else
-                {
-                    onInit?.Invoke(existingAsset);
+                    else
+                    {
+                        Type configType = MultipleAdsConfigGenerator.FindConfigType(className);
+                        if (configType != null)
+                        {
+                            existingAsset = (BaseAdConfig)ScriptableObject.CreateInstance(configType);
+                            string dir = MultipleAdsPaths.GetAdsConfigDirectory();
+                            if (!Directory.Exists(dir))
+                            {
+                                Directory.CreateDirectory(dir);
+                            }
+                            AssetDatabase.CreateAsset(existingAsset, path);
+                            Debug.Log($"[MultipleAdsSetupWindow] Created {assetName} at {path}");
+                        }
+                    }
                 }
 
                 if (existingAsset != null)
                 {
+                    onInit?.Invoke(existingAsset);
                     if (config.ProviderConfigs != null && !config.ProviderConfigs.Contains(existingAsset))
                     {
                         config.ProviderConfigs.Add(existingAsset);
@@ -1080,18 +1162,12 @@ namespace Herghys.MultipleAdsManager.Editor
                     Debug.Log($"[MultipleAdsSetupWindow] Removed {assetName} from MultipleAdsManager Config because define is not enabled.");
                 }
                 config.ProviderConfigs?.RemoveAll(c => c == null || c.NetworkType == networkType);
-                DeleteConfigAssetIfDisabled(assetName);
             }
         }
 
         private static Type FindTypeInAllAssemblies(string typeName)
         {
-            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
-            {
-                var t = assembly.GetType(typeName);
-                if (t != null) return t;
-            }
-            return null;
+            return MultipleAdsConfigGenerator.FindConfigType(typeName);
         }
 
         private static void DeleteConfigAssetIfDisabled(string assetName)
