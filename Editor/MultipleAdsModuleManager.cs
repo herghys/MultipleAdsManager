@@ -117,6 +117,20 @@ namespace Herghys.MultipleAdsManager.Editor
                     Url = "https://registry.npmjs.com",
                     Scopes = new List<string> { "io.liftoff" }
                 }
+            },
+            new AdsModuleDefinition
+            {
+                Id = "UnityAds",
+                DisplayName = "Unity Ads",
+                Description = "Unity Ads monetization wrapper supporting Game ID initialization, banner, interstitial, and rewarded ads.",
+                DefineSymbol = "UNITY_ADS",
+                SdkInstalledSymbol = "UNITY_ADS_SDK_INSTALLED",
+                SdkTypeCheck = "UnityEngine.Advertisements.Advertisement",
+                NetworkType = AdNetworkType.UnityAds,
+                IsDefault = false,
+                PackageId = "com.unity.ads",
+                PackageVersion = "4.19.0",
+                ScopedRegistry = null
             }
         };
 
@@ -197,9 +211,12 @@ namespace Herghys.MultipleAdsManager.Editor
                 return;
             }
 
+            MultipleAdsPackageManager.ClearSdkOverride(def.Id);
+
+            bool packageAdded = false;
             if (autoInstallSdk && !string.IsNullOrEmpty(def.PackageId))
             {
-                bool packageAdded = MultipleAdsPackageManager.AddPackage(def.PackageId, def.PackageVersion, def.ScopedRegistry);
+                packageAdded = MultipleAdsPackageManager.AddPackage(def.PackageId, def.PackageVersion, def.ScopedRegistry, resolveImmediately: false);
                 if (packageAdded)
                 {
                     Debug.Log($"[MultipleAdsModuleManager] Automatically added SDK '{def.PackageId}' ({def.PackageVersion}) for module '{def.DisplayName}'.");
@@ -216,21 +233,43 @@ namespace Herghys.MultipleAdsManager.Editor
                 Directory.CreateDirectory(targetDir);
             }
 
+            MultipleAdsPackageManager.Scan();
+
             BuildTargetGroup targetGroup = MultipleAdsBuildTargetCompat.SelectedBuildTargetGroup;
-            if (!string.IsNullOrEmpty(def.DefineSymbol))
+            var definesList = MultipleAdsBuildTargetCompat.GetDefinesList(targetGroup);
+            bool definesChanged = false;
+            if (!string.IsNullOrEmpty(def.DefineSymbol) && !definesList.Contains(def.DefineSymbol))
             {
-                MultipleAdsBuildTargetCompat.AddDefine(targetGroup, def.DefineSymbol);
+                definesList.Add(def.DefineSymbol);
+                definesChanged = true;
             }
-            if (autoInstallSdk && !string.IsNullOrEmpty(def.SdkInstalledSymbol) && MultipleAdsPackageManager.IsSdkInstalled(def))
+            if ((autoInstallSdk || MultipleAdsPackageManager.IsSdkInstalled(def)) && !string.IsNullOrEmpty(def.SdkInstalledSymbol) && !definesList.Contains(def.SdkInstalledSymbol))
             {
-                MultipleAdsBuildTargetCompat.AddDefine(targetGroup, def.SdkInstalledSymbol);
+                if (MultipleAdsPackageManager.IsSdkInstalled(def))
+                {
+                    definesList.Add(def.SdkInstalledSymbol);
+                    definesChanged = true;
+                }
             }
+            if (definesChanged)
+            {
+                MultipleAdsBuildTargetCompat.SetScriptingDefineSymbols(targetGroup, definesList);
+            }
+
+            MultipleAdsConfigGenerator.RequestAutoRescan();
 
             if (downloadFromRemote)
             {
                 DownloadFromRemote(def, targetDir, ok =>
                 {
+                    MultipleAdsConfigGenerator.RequestAutoRescan();
+                    if (packageAdded)
+                    {
+                        UnityEditor.PackageManager.Client.Resolve();
+                    }
                     MultipleAdsConfigGenerator.AutoScanAndCreateConfigs(forceRescan: true);
+                    ModuleUIState.ScanAll(targetGroup, clearOverrides: false);
+                    MultipleAdsConfigGenerator.RefreshAllOpenWindows();
                     onComplete?.Invoke(ok);
                 });
             }
@@ -238,8 +277,14 @@ namespace Herghys.MultipleAdsManager.Editor
             {
                 InstallFromLocalTemplates(def, targetDir);
                 AssetDatabase.Refresh();
+                if (packageAdded)
+                {
+                    UnityEditor.PackageManager.Client.Resolve();
+                }
                 Debug.Log($"[MultipleAdsModuleManager] Successfully added module '{def.DisplayName}' into {targetDir}.");
                 MultipleAdsConfigGenerator.AutoScanAndCreateConfigs(forceRescan: true);
+                ModuleUIState.ScanAll(targetGroup, clearOverrides: false);
+                MultipleAdsConfigGenerator.RefreshAllOpenWindows();
                 onComplete?.Invoke(true);
             }
         }
@@ -255,6 +300,8 @@ namespace Herghys.MultipleAdsManager.Editor
 
             if (targetGroup == BuildTargetGroup.Unknown)
                 targetGroup = MultipleAdsBuildTargetCompat.SelectedBuildTargetGroup;
+
+            MultipleAdsPackageManager.ClearSdkOverride(def.Id);
 
             var list = MultipleAdsBuildTargetCompat.GetDefinesList(targetGroup);
             bool changed = false;
@@ -292,7 +339,10 @@ namespace Herghys.MultipleAdsManager.Editor
                 MultipleAdsPackageManager.RemovePackage(def.PackageId);
             }
 
+            MultipleAdsConfigGenerator.RequestAutoRescan();
             AssetDatabase.Refresh();
+            ModuleUIState.ScanAll(targetGroup, clearOverrides: false);
+            MultipleAdsConfigGenerator.RefreshAllOpenWindows();
         }
 
         private static void InstallFromLocalTemplates(AdsModuleDefinition def, string targetDir)

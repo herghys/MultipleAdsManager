@@ -180,13 +180,19 @@ namespace Herghys.MultipleAdsManager.Editor
 
             Debug.Log($"[MultipleAdsPackageManager] Installing ads provider SDK for {module.DisplayName}...");
 
+            ClearSdkOverride(module.Id);
+
+            bool packageAdded = false;
             if (!string.IsNullOrEmpty(module.PackageId))
             {
-                AddPackage(module.PackageId, module.PackageVersion, module.ScopedRegistry);
+                packageAdded = AddPackage(module.PackageId, module.PackageVersion, module.ScopedRegistry, resolveImmediately: false);
             }
 
             // Ensure module template files exist in project
             MultipleAdsModuleManager.EnsureModuleFiles(module);
+
+            // Scan manifest/packages so IsSdkInstalled immediately detects the newly added package
+            Scan();
 
             // Auto-enable define symbols
             var list = MultipleAdsBuildTargetCompat.GetDefinesList(targetGroup);
@@ -206,9 +212,18 @@ namespace Herghys.MultipleAdsManager.Editor
                 MultipleAdsBuildTargetCompat.SetScriptingDefineSymbols(targetGroup, list);
             }
 
+            MultipleAdsConfigGenerator.RequestAutoRescan();
+
+            AssetDatabase.Refresh();
+            if (packageAdded)
+            {
+                UnityEditor.PackageManager.Client.Resolve();
+            }
+
             // Auto-scan and auto-create AdsConfig
             MultipleAdsConfigGenerator.AutoScanAndCreateConfigs(forceRescan: true);
-            AssetDatabase.Refresh();
+            ModuleUIState.ScanAll(targetGroup, clearOverrides: false);
+            MultipleAdsConfigGenerator.RefreshAllOpenWindows();
             return true;
         }
 

@@ -36,11 +36,25 @@ namespace Herghys.MultipleAdsManager.Editor
             moduleStates = ModuleUIState.GetStates(target, forceRescan: false);
         }
 
-        public void RescanModules()
+        public override void RefreshAfterScan()
+        {
+            base.RefreshAfterScan();
+            BuildTargetGroup target = MultipleAdsBuildTargetCompat.SelectedBuildTargetGroup;
+            moduleStates = ModuleUIState.GetStates(target, forceRescan: false);
+            Repaint();
+        }
+
+        public void RescanModules(bool clearOverrides = false)
         {
             BuildTargetGroup target = MultipleAdsBuildTargetCompat.SelectedBuildTargetGroup;
+            if (clearOverrides)
+            {
+                ModuleUIState.ScanAll(target, clearOverrides: true);
+            }
             MultipleAdsConfigGenerator.AutoScanAndCreateConfigs(forceRescan: true);
-            moduleStates = ModuleUIState.ScanAll(target);
+            moduleStates = ModuleUIState.ScanAll(target, clearOverrides: false);
+            LoadOrCreateConfig();
+            Repaint();
         }
 
         private void OnGUI()
@@ -66,7 +80,7 @@ namespace Herghys.MultipleAdsManager.Editor
             GUILayout.FlexibleSpace();
             if (GUILayout.Button(new GUIContent("Scan All", "Scan all packages and assemblies for every module"), EditorStyles.miniButton, GUILayout.Width(80), GUILayout.Height(18)))
             {
-                RescanModules();
+                RescanModules(clearOverrides: true);
             }
             EditorGUILayout.EndHorizontal();
 
@@ -74,10 +88,7 @@ namespace Herghys.MultipleAdsManager.Editor
 
             BuildTargetGroup target = MultipleAdsBuildTargetCompat.SelectedBuildTargetGroup;
 
-            if (moduleStates == null)
-            {
-                moduleStates = ModuleUIState.GetStates(target, forceRescan: false);
-            }
+            moduleStates = ModuleUIState.GetStates(target, forceRescan: false);
 
             if (moduleStates != null)
             {
@@ -247,10 +258,42 @@ namespace Herghys.MultipleAdsManager.Editor
                     }
                     else
                     {
-                        AddDefine(target, module.DefineSymbol);
-                        state.HasDefine = true;
+                        bool isSdkInstalled = state.IsEffectiveInstalled;
+                        if (!string.IsNullOrEmpty(module.PackageId) && !isSdkInstalled)
+                        {
+                            int choice = EditorUtility.DisplayDialogComplex(
+                                $"Enable {module.DisplayName}",
+                                $"The SDK for {module.DisplayName} ({module.PackageId}) is not yet detected in your project.\n\n" +
+                                $"You can still enable {module.DisplayName} to configure its ad units and weights in mediation—it will safely run in Stub mode until the SDK is installed.\n\n" +
+                                $"Would you like to auto-install the SDK via UPM now, or enable anyway in Stub mode?",
+                                "Auto Install SDK & Enable",
+                                "Enable in Stub Mode",
+                                "Cancel"
+                            );
+
+                            if (choice == 0)
+                            {
+                                MultipleAdsPackageManager.InstallSdkForModule(module, target);
+                                state.HasDefine = true;
+                            }
+                            else if (choice == 1)
+                            {
+                                AddDefine(target, module.DefineSymbol);
+                                state.HasDefine = true;
+                            }
+                            else
+                            {
+                                return;
+                            }
+                        }
+                        else
+                        {
+                            AddDefine(target, module.DefineSymbol);
+                            state.HasDefine = true;
+                        }
                     }
                     MultipleAdsSetupWindow.SyncConfigsWithActiveDefines(mainConfig, true);
+                    RescanModules();
                     GUIUtility.ExitGUI();
                 }
 

@@ -15,6 +15,7 @@ namespace Herghys.MultipleAdsManager.Editor
         public const string SymbolLevelPlay = "LEVELPLAY_ADS";
         public const string SymbolAppLovin = "APPLOVIN_ADS";
         public const string SymbolVungle = "VUNGLE_ADS";
+        public const string SymbolUnityAds = "UNITY_ADS";
 
         private Vector2 scrollPos;
         private MultipleAdsConfig mainConfig;
@@ -135,10 +136,27 @@ namespace Herghys.MultipleAdsManager.Editor
             return newState;
         }
 
-        public void RescanModules()
+        public void RefreshAfterScan()
         {
+            moduleConfigCache.Clear();
+            LoadOrCreateConfig();
             BuildTargetGroup target = MultipleAdsBuildTargetCompat.SelectedBuildTargetGroup;
-            moduleStates = ModuleUIState.ScanAll(target);
+            moduleStates = ModuleUIState.GetStates(target, forceRescan: false);
+            Repaint();
+        }
+
+        public void RescanModules(bool clearOverrides = false)
+        {
+            moduleConfigCache.Clear();
+            BuildTargetGroup target = MultipleAdsBuildTargetCompat.SelectedBuildTargetGroup;
+            if (clearOverrides)
+            {
+                ModuleUIState.ScanAll(target, clearOverrides: true);
+            }
+            MultipleAdsConfigGenerator.AutoScanAndCreateConfigs(forceRescan: true);
+            moduleStates = ModuleUIState.ScanAll(target, clearOverrides: false);
+            LoadOrCreateConfig();
+            Repaint();
         }
 
         public void LoadOrCreateConfig()
@@ -280,7 +298,7 @@ namespace Herghys.MultipleAdsManager.Editor
         {
             MultipleAdsPackageManager.Scan();
             moduleConfigCache.Clear();
-            RescanModules();
+            RescanModules(clearOverrides: true);
 
             int testCount = 0;
             if (mainConfig != null && mainConfig.AdEntries != null)
@@ -566,15 +584,12 @@ namespace Herghys.MultipleAdsManager.Editor
             GUILayout.FlexibleSpace();
             if (GUILayout.Button(new GUIContent("Scan All Modules", "Scan all packages and assemblies for every module"), EditorStyles.miniButton, GUILayout.Width(130), GUILayout.Height(18)))
             {
-                RescanModules();
+                RescanModules(clearOverrides: true);
             }
             EditorGUILayout.EndHorizontal();
             EditorGUILayout.Space(2);
 
-            if (moduleStates == null)
-            {
-                moduleStates = ModuleUIState.GetStates(target, forceRescan: false);
-            }
+            moduleStates = ModuleUIState.GetStates(target, forceRescan: false);
 
             if (moduleStates != null)
             {
@@ -763,8 +778,7 @@ namespace Herghys.MultipleAdsManager.Editor
 
                             if (choice == 0) // Auto install SDK & enable
                             {
-                                MultipleAdsPackageManager.AddPackage(module.PackageId, module.PackageVersion, module.ScopedRegistry);
-                                AddDefine(target, module.DefineSymbol);
+                                MultipleAdsPackageManager.InstallSdkForModule(module, target);
                                 state.HasDefine = true;
                             }
                             else if (choice == 1) // Enable in Stub Mode
@@ -844,6 +858,7 @@ namespace Herghys.MultipleAdsManager.Editor
                 MultipleAdsModuleManager.AddModule(module.Id, autoInstallSdk: false, downloadFromRemote, success =>
                 {
                     SyncConfigsWithActiveDefines(mainConfig, true);
+                    RescanModules();
                 });
                 return;
             }
@@ -864,6 +879,7 @@ namespace Herghys.MultipleAdsManager.Editor
                 MultipleAdsModuleManager.AddModule(module.Id, autoInstallSdk: true, downloadFromRemote, success =>
                 {
                     SyncConfigsWithActiveDefines(mainConfig, true);
+                    RescanModules();
                 });
             }
             else if (choice == 1)
@@ -871,6 +887,7 @@ namespace Herghys.MultipleAdsManager.Editor
                 MultipleAdsModuleManager.AddModule(module.Id, autoInstallSdk: false, downloadFromRemote, success =>
                 {
                     SyncConfigsWithActiveDefines(mainConfig, true);
+                    RescanModules();
                 });
             }
         }
@@ -1077,6 +1094,7 @@ namespace Herghys.MultipleAdsManager.Editor
             bool hasLevelPlay = HasDefine(target, SymbolLevelPlay);
             bool hasAppLovin = HasDefine(target, SymbolAppLovin);
             bool hasVungle = HasDefine(target, SymbolVungle);
+            bool hasUnityAds = HasDefine(target, SymbolUnityAds);
 
             foreach (var module in MultipleAdsModuleManager.AllModules)
             {
@@ -1086,7 +1104,7 @@ namespace Herghys.MultipleAdsManager.Editor
                 SyncSingleProvider(config, isEnabled, $"{module.Id}Config", $"{module.Id}Config", null, module.NetworkType);
             }
 
-            config.CleanDisabledProviders(hasGoogle, hasLevelPlay, hasAppLovin, hasVungle);
+            config.CleanDisabledProviders(hasGoogle, hasLevelPlay, hasAppLovin, hasVungle, hasUnityAds);
 
             EditorUtility.SetDirty(config);
 
@@ -1122,24 +1140,32 @@ namespace Herghys.MultipleAdsManager.Editor
             {
                 if (existingAsset == null)
                 {
-                    if (module != null)
+                    if (!EditorApplication.isCompiling && !EditorApplication.isUpdating)
                     {
-                        existingAsset = MultipleAdsConfigGenerator.EnsureProviderConfig(module, config, false);
-                    }
-                    else
-                    {
-                        Type configType = MultipleAdsConfigGenerator.FindConfigType(className);
-                        if (configType != null)
+                        if (module != null)
                         {
-                            existingAsset = (BaseAdConfig)ScriptableObject.CreateInstance(configType);
-                            string dir = MultipleAdsPaths.GetAdsConfigDirectory();
-                            if (!Directory.Exists(dir))
-                            {
-                                Directory.CreateDirectory(dir);
-                            }
-                            AssetDatabase.CreateAsset(existingAsset, path);
-                            Debug.Log($"[MultipleAdsSetupWindow] Created {assetName} at {path}");
+                            existingAsset = MultipleAdsConfigGenerator.EnsureProviderConfig(module, config, false);
                         }
+                        else
+                        {
+                            Type configType = MultipleAdsConfigGenerator.FindConfigType(className);
+                            if (configType != null)
+                            {
+                                existingAsset = (BaseAdConfig)ScriptableObject.CreateInstance(configType);
+                                string dir = MultipleAdsPaths.GetAdsConfigDirectory();
+                                if (!Directory.Exists(dir))
+                                {
+                                    Directory.CreateDirectory(dir);
+                                }
+                                AssetDatabase.CreateAsset(existingAsset, path);
+                                Debug.Log($"[MultipleAdsSetupWindow] Created {assetName} at {path}");
+                            }
+                        }
+                    }
+
+                    if (existingAsset == null)
+                    {
+                        MultipleAdsConfigGenerator.RequestAutoRescan();
                     }
                 }
 

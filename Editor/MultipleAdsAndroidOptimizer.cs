@@ -61,7 +61,7 @@ namespace Herghys.MultipleAdsManager.Editor
             AssetDatabase.Refresh();
 
             string reportMsg = $"MultipleAds Android Optimization complete:\n" +
-                               $"• Active Defines: {(hasGoogle ? "GoogleAds " : "")}{(hasLevelPlay ? "LevelPlay " : "")}{(hasAppLovin ? "AppLovin " : "")}{(hasVungle ? "Vungle " : "")}\n" +
+                               $"• Active Defines: {(hasGoogle ? "GoogleAds " : "")}{(hasLevelPlay ? "LevelPlay " : "")}{(hasAppLovin ? "AppLovin " : "")}{(hasVungle ? "Vungle " : "")}{(hasUnityAds ? "UnityAds " : "")}\n" +
                                $"• Inactive Adapter XMLs toggled: {disabledXmlCount}\n" +
                                $"• Inactive Gradle Dependencies stripped: {strippedGradleDeps}\n" +
                                $"• ProGuard / R8 Rules appended to {ProguardPath} using text template\n" +
@@ -263,6 +263,7 @@ namespace Herghys.MultipleAdsManager.Editor
             bool enableLevelPlay = (config == null || config.EnableProguardLevelPlay) && defineList.Contains("LEVELPLAY_ADS");
             bool enableAppLovin = (config == null || config.EnableProguardAppLovin) && defineList.Contains("APPLOVIN_ADS");
             bool enableVungle = (config == null || config.EnableProguardVungle) && defineList.Contains("VUNGLE_ADS");
+            bool enableUnityAds = (config == null || config.EnableProguardUnityAds) && defineList.Contains("UNITY_ADS");
 
             var activeRules = new StringBuilder();
 
@@ -312,6 +313,16 @@ namespace Herghys.MultipleAdsManager.Editor
                 if (!string.IsNullOrWhiteSpace(vRules))
                 {
                     activeRules.AppendLine(vRules.Trim());
+                    activeRules.AppendLine();
+                }
+            }
+
+            if (enableUnityAds)
+            {
+                string uRules = LoadTemplateFile(MultipleAdsPaths.ProguardTemplatesPath, "proguard-unityads.txt", GetFallbackUnityAdsProguard());
+                if (!string.IsNullOrWhiteSpace(uRules))
+                {
+                    activeRules.AppendLine(uRules.Trim());
                     activeRules.AppendLine();
                 }
             }
@@ -581,6 +592,14 @@ namespace Herghys.MultipleAdsManager.Editor
         {
             return @"-dontwarn com.vungle.**
 -keep class com.vungle.** { *; }";
+        }
+
+        private static string GetFallbackUnityAdsProguard()
+        {
+            return @"-dontwarn com.unity3d.ads.**
+-dontwarn com.unity3d.services.**
+-keep class com.unity3d.ads.** { *; }
+-keep class com.unity3d.services.** { *; }";
         }
 
         private static string GetFallbackCoreManifest()

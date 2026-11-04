@@ -14,6 +14,7 @@ namespace Herghys.MultipleAdsManager.Editor
         private const string SymbolLevelPlay = "LEVELPLAY_ADS";
         private const string SymbolAppLovin = "APPLOVIN_ADS";
         private const string SymbolVungle = "VUNGLE_ADS";
+        private const string SymbolUnityAds = "UNITY_ADS";
 
         private void OnGUI()
         {
@@ -54,6 +55,7 @@ namespace Herghys.MultipleAdsManager.Editor
             bool hasLevelPlay = defineList.Contains(SymbolLevelPlay);
             bool hasAppLovin = defineList.Contains(SymbolAppLovin);
             bool hasVungle = defineList.Contains(SymbolVungle);
+            bool hasUnityAds = defineList.Contains(SymbolUnityAds);
 
             // 1. Adapter DEX Status
             EditorGUILayout.LabelField("Android DEX & Adapter Optimizer", EditorStyles.boldLabel);
@@ -62,9 +64,10 @@ namespace Herghys.MultipleAdsManager.Editor
             EditorGUILayout.LabelField("Mediation Adapter DEX Status (Strip inactive from build):", EditorStyles.miniBoldLabel);
             DrawAdapterStatus("LevelPlay AdMob Adapter", hasLevelPlay && hasGoogle);
             DrawAdapterStatus("LevelPlay AppLovin Adapter", hasLevelPlay && hasAppLovin);
-            DrawAdapterStatus("LevelPlay UnityAds Adapter", false);
+            DrawAdapterStatus("LevelPlay UnityAds Adapter", hasLevelPlay && hasUnityAds);
             DrawAdapterStatus("Google Mobile Ads Standalone SDK", hasGoogle);
             DrawAdapterStatus("LevelPlay Core SDK", hasLevelPlay);
+            DrawAdapterStatus("Unity Ads Standalone SDK", hasUnityAds);
 
             EditorGUILayout.EndVertical();
             EditorGUILayout.Space(6);
@@ -75,7 +78,7 @@ namespace Herghys.MultipleAdsManager.Editor
             EditorGUILayout.Space(6);
 
             // 3. ProGuard / R8 Rules Toggles
-            DrawProguardRulesSection(config, hasGoogle, hasLevelPlay, hasAppLovin, hasVungle);
+            DrawProguardRulesSection(config, hasGoogle, hasLevelPlay, hasAppLovin, hasVungle, hasUnityAds);
 
             EditorGUILayout.Space(6);
 
@@ -189,7 +192,7 @@ namespace Herghys.MultipleAdsManager.Editor
             EditorGUILayout.EndVertical();
         }
 
-        public static void DrawProguardRulesSection(MultipleAdsConfig config, bool hasGoogle, bool hasLevelPlay, bool hasAppLovin, bool hasVungle)
+        public static void DrawProguardRulesSection(MultipleAdsConfig config, bool hasGoogle, bool hasLevelPlay, bool hasAppLovin, bool hasVungle, bool hasUnityAds = false)
         {
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("ProGuard / R8 Rules Optimizer", EditorStyles.boldLabel);
@@ -203,6 +206,7 @@ namespace Herghys.MultipleAdsManager.Editor
                 config.EnableProguardLevelPlay = true;
                 config.EnableProguardAppLovin = true;
                 config.EnableProguardVungle = true;
+                config.EnableProguardUnityAds = true;
                 EditorUtility.SetDirty(config);
             }
             if (GUILayout.Button("Deselect All", EditorStyles.miniButtonMid, GUILayout.Width(75)))
@@ -213,6 +217,7 @@ namespace Herghys.MultipleAdsManager.Editor
                 config.EnableProguardLevelPlay = false;
                 config.EnableProguardAppLovin = false;
                 config.EnableProguardVungle = false;
+                config.EnableProguardUnityAds = false;
                 EditorUtility.SetDirty(config);
             }
             if (GUILayout.Button("Sync SDKs", EditorStyles.miniButtonRight, GUILayout.Width(70)))
@@ -223,6 +228,7 @@ namespace Herghys.MultipleAdsManager.Editor
                 config.EnableProguardLevelPlay = hasLevelPlay;
                 config.EnableProguardAppLovin = hasAppLovin;
                 config.EnableProguardVungle = hasVungle;
+                config.EnableProguardUnityAds = hasUnityAds;
                 EditorUtility.SetDirty(config);
             }
             EditorGUILayout.EndHorizontal();
@@ -268,6 +274,13 @@ namespace Herghys.MultipleAdsManager.Editor
                 hasVungle ? "VUNGLE_ADS" : "Not Active"
             );
 
+            bool unityAds = DrawRuleToggle(
+                "Unity Ads Rules",
+                "Keep & dontwarn com.unity3d.ads.**, com.unity3d.services.**",
+                config.EnableProguardUnityAds,
+                hasUnityAds ? "UNITY_ADS" : "Not Active"
+            );
+
             if (EditorGUI.EndChangeCheck())
             {
                 Undo.RecordObject(config, "Modify ProGuard Rules Toggles");
@@ -276,6 +289,7 @@ namespace Herghys.MultipleAdsManager.Editor
                 config.EnableProguardLevelPlay = levelPlay;
                 config.EnableProguardAppLovin = appLovin;
                 config.EnableProguardVungle = vungle;
+                config.EnableProguardUnityAds = unityAds;
                 EditorUtility.SetDirty(config);
             }
 

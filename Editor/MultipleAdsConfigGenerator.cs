@@ -269,11 +269,48 @@ namespace Herghys.MultipleAdsManager.Editor
             return existingAsset;
         }
 
+        public const string PendingAutoRescanSessionKey = "MultipleAds_PendingAutoRescan";
+
+        public static void RequestAutoRescan()
+        {
+            SessionState.SetBool(PendingAutoRescanSessionKey, true);
+            MultipleAdsAutoConfigWatcher.ScheduleRescanWhenReady();
+        }
+
+        public static void RefreshAllOpenWindows()
+        {
+            BuildTargetGroup target = MultipleAdsBuildTargetCompat.SelectedBuildTargetGroup;
+
+            var setupWindows = Resources.FindObjectsOfTypeAll<MultipleAdsSetupWindow>();
+            if (setupWindows != null)
+            {
+                foreach (var win in setupWindows)
+                {
+                    if (win == null) continue;
+                    win.RefreshAfterScan();
+                }
+            }
+
+            var editorWindows = Resources.FindObjectsOfTypeAll<MultipleAdsEditorWindowBase>();
+            if (editorWindows != null)
+            {
+                foreach (var win in editorWindows)
+                {
+                    if (win == null) continue;
+                    win.RefreshAfterScan();
+                }
+            }
+        }
+
         public static void LoadCheck(bool showDialog = false)
         {
             if (isGenerating) return;
-            if (EditorApplication.isCompiling || EditorApplication.isUpdating) return;
             if (BuildPipeline.isBuildingPlayer) return;
+            if (EditorApplication.isCompiling || EditorApplication.isUpdating)
+            {
+                RequestAutoRescan();
+                return;
+            }
 
             isGenerating = true;
             try
@@ -300,6 +337,7 @@ namespace Herghys.MultipleAdsManager.Editor
                 var defineList = MultipleAdsBuildTargetCompat.GetDefinesList(target);
                 bool definesChanged = false;
                 bool needsAssetRefresh = false;
+                bool missingCompiledConfigType = false;
 
                 // 3. LoadCheck for every provider config
                 foreach (var module in MultipleAdsModuleManager.AllModules)
@@ -327,6 +365,7 @@ namespace Herghys.MultipleAdsManager.Editor
                         {
                             defineList.Add(module.DefineSymbol);
                             definesChanged = true;
+                            hasDefine = true;
                             Debug.Log($"[MultipleAds] Auto-enabled define symbol '{module.DefineSymbol}' for installed provider {module.DisplayName}.");
                         }
 
@@ -358,12 +397,19 @@ namespace Herghys.MultipleAdsManager.Editor
                         {
                             Debug.Log($"[MultipleAds] LoadCheck: Missing AdsConfig for {module.DisplayName}. Auto-creating...");
                             existingConfig = EnsureProviderConfig(module, config, false);
+                            if (existingConfig == null)
+                            {
+                                missingCompiledConfigType = true;
+                            }
                         }
 
                         if (existingConfig != null && config.ProviderConfigs != null && !config.ProviderConfigs.Contains(existingConfig))
                         {
-                            config.ProviderConfigs.Add(existingConfig);
-                            EditorUtility.SetDirty(config);
+                            if (module.IsDefault || hasDefine)
+                            {
+                                config.ProviderConfigs.Add(existingConfig);
+                                EditorUtility.SetDirty(config);
+                            }
                         }
                     }
                 }
@@ -385,6 +431,14 @@ namespace Herghys.MultipleAdsManager.Editor
                 {
                     AssetDatabase.Refresh();
                 }
+
+                if (definesChanged || needsAssetRefresh || missingCompiledConfigType)
+                {
+                    RequestAutoRescan();
+                }
+
+                ModuleUIState.ScanAll(target, clearOverrides: false);
+                RefreshAllOpenWindows();
 
                 if (showDialog)
                 {
@@ -423,17 +477,65 @@ namespace Herghys.MultipleAdsManager.Editor
     public static class MultipleAdsAutoConfigWatcher
     {
         private static bool hasRunOnAppLoad = false;
+        private static bool isPollingReady = false;
 
         static MultipleAdsAutoConfigWatcher()
         {
-            EditorApplication.delayCall += () =>
-            {
-                if (hasRunOnAppLoad) return;
-                if (EditorApplication.isCompiling || EditorApplication.isUpdating || BuildPipeline.isBuildingPlayer) return;
+            UnityEditor.PackageManager.Events.registeredPackages -= OnPackagesRegistered;
+            UnityEditor.PackageManager.Events.registeredPackages += OnPackagesRegistered;
 
+            AssemblyReloadEvents.afterAssemblyReload -= OnAfterAssemblyReload;
+            AssemblyReloadEvents.afterAssemblyReload += OnAfterAssemblyReload;
+
+            ScheduleRescanWhenReady();
+        }
+
+        private static void OnPackagesRegistered(UnityEditor.PackageManager.PackageRegistrationEventArgs args)
+        {
+            if ((args.added != null && args.added.Count > 0) ||
+                (args.removed != null && args.removed.Count > 0) ||
+                (args.changedTo != null && args.changedTo.Count > 0))
+            {
+                MultipleAdsPackageManager.InvalidatePackageCache();
+                MultipleAdsConfigGenerator.RequestAutoRescan();
+            }
+        }
+
+        private static void OnAfterAssemblyReload()
+        {
+            ScheduleRescanWhenReady();
+        }
+
+        public static void ScheduleRescanWhenReady()
+        {
+            if (isPollingReady) return;
+            isPollingReady = true;
+            EditorApplication.delayCall += TryRunScheduledRescan;
+        }
+
+        private static void TryRunScheduledRescan()
+        {
+            if (BuildPipeline.isBuildingPlayer)
+            {
+                isPollingReady = false;
+                return;
+            }
+
+            if (EditorApplication.isCompiling || EditorApplication.isUpdating)
+            {
+                EditorApplication.delayCall += TryRunScheduledRescan;
+                return;
+            }
+
+            isPollingReady = false;
+
+            bool pendingRescan = SessionState.GetBool(MultipleAdsConfigGenerator.PendingAutoRescanSessionKey, false);
+            if (!hasRunOnAppLoad || pendingRescan)
+            {
                 hasRunOnAppLoad = true;
-                MultipleAdsConfigGenerator.LoadCheck(showDialog: false);
-            };
+                SessionState.SetBool(MultipleAdsConfigGenerator.PendingAutoRescanSessionKey, false);
+                MultipleAdsConfigGenerator.AutoScanAndCreateConfigs(forceRescan: pendingRescan, showDialog: false);
+            }
         }
     }
 }

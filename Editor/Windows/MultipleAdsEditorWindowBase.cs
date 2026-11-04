@@ -39,6 +39,12 @@ namespace Herghys.MultipleAdsManager.Editor
             }
         }
 
+        public virtual void RefreshAfterScan()
+        {
+            LoadOrCreateConfig();
+            Repaint();
+        }
+
         public void DrawSharedHeader(string activeTabName, string sectionTitle, string sectionDescription)
         {
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
@@ -139,8 +145,12 @@ namespace Herghys.MultipleAdsManager.Editor
 
         public static void TriggerManualScan()
         {
+            BuildTargetGroup target = MultipleAdsBuildTargetCompat.SelectedBuildTargetGroup;
+            ModuleUIState.ScanAll(target, clearOverrides: true);
             MultipleAdsConfigGenerator.AutoScanAndCreateConfigs(forceRescan: true, showDialog: false);
             MultipleAdsPackageManager.Scan();
+            ModuleUIState.ScanAll(target, clearOverrides: false);
+            MultipleAdsConfigGenerator.RefreshAllOpenWindows();
 
             var config = MultipleAdsConfigGenerator.GetConfig();
             int activeTestCount = 0;

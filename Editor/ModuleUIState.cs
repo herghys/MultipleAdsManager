@@ -27,83 +27,58 @@ namespace Herghys.MultipleAdsManager.Editor
         {
             if (forceRescan || _cachedStates == null)
             {
-                if (forceRescan)
-                {
-                    _cachedStates = ScanAll(targetGroup);
-                }
-                else
-                {
-                    _cachedStates = GetFastInitialStates(targetGroup);
-                }
+                _cachedStates = ScanAll(targetGroup, clearOverrides: false);
             }
             return _cachedStates;
         }
 
         public static List<ModuleUIState> GetFastInitialStates(BuildTargetGroup targetGroup = BuildTargetGroup.Unknown)
         {
-            var result = new List<ModuleUIState>();
-
-            var defineSet = new HashSet<string>(MultipleAdsBuildTargetCompat.GetDefinesList(targetGroup));
-
-            var allModules = MultipleAdsModuleManager.GetAllModules();
-            foreach (var mod in allModules)
-            {
-                if (mod == null) continue;
-
-                bool isAdded = mod.IsDefault || Directory.Exists(MultipleAdsPaths.GetModuleDirectory(mod.Id));
-                bool hasDefine = mod.IsDefault || (!string.IsNullOrEmpty(mod.DefineSymbol) && defineSet.Contains(mod.DefineSymbol));
-                bool? sdkOverride = MultipleAdsPackageManager.GetSdkOverride(mod.Id);
-
-                string configPath = MultipleAdsPaths.GetProviderConfigAssetPath($"{mod.Id}Config");
-                var config = AssetDatabase.LoadAssetAtPath<BaseAdConfig>(configPath);
-                if (config == null)
-                {
-                    string[] guids = AssetDatabase.FindAssets($"{mod.Id}Config t:ScriptableObject");
-                    if (guids.Length > 0)
-                    {
-                        config = AssetDatabase.LoadAssetAtPath<BaseAdConfig>(AssetDatabase.GUIDToAssetPath(guids[0]));
-                    }
-                }
-                if (config == null && mod.IsDefault)
-                {
-                    config = MultipleAdsConfigGenerator.EnsureProviderConfig(mod);
-                }
-
-                result.Add(new ModuleUIState
-                {
-                    Definition = mod,
-                    IsAdded = isAdded,
-                    HasDefine = hasDefine,
-                    AutoDetected = mod.IsDefault,
-                    SdkOverride = sdkOverride,
-                    IsEffectiveInstalled = sdkOverride.HasValue ? sdkOverride.Value : (mod.IsDefault),
-                    Config = config,
-                    HasTestAdsActive = CheckIfNetworkUsesTestAds(mod.NetworkType),
-                    Scanned = mod.IsDefault // Default mock module needs no scan
-                });
-            }
-
-            return result;
+            return ScanAll(targetGroup, clearOverrides: false);
         }
 
         public static List<ModuleUIState> ScanAll(BuildTargetGroup targetGroup = BuildTargetGroup.Unknown)
         {
+            return ScanAll(targetGroup, clearOverrides: false);
+        }
+
+        public static List<ModuleUIState> ScanAll(BuildTargetGroup targetGroup, bool clearOverrides)
+        {
+            if (targetGroup == BuildTargetGroup.Unknown)
+                targetGroup = MultipleAdsBuildTargetCompat.SelectedBuildTargetGroup;
+
             var result = new List<ModuleUIState>();
 
             MultipleAdsPackageManager.Scan();
 
+            var allModules = MultipleAdsModuleManager.GetAllModules();
+            if (clearOverrides)
+            {
+                foreach (var mod in allModules)
+                {
+                    if (mod != null)
+                    {
+                        MultipleAdsPackageManager.ClearSdkOverride(mod.Id);
+                    }
+                }
+            }
+
+            if (!EditorApplication.isCompiling && !EditorApplication.isUpdating)
+            {
+                MultipleAdsPackageManager.SyncSdkInstalledDefines(targetGroup);
+            }
+
             var defineSet = new HashSet<string>(MultipleAdsBuildTargetCompat.GetDefinesList(targetGroup));
 
-            var allModules = MultipleAdsModuleManager.GetAllModules();
             foreach (var mod in allModules)
             {
                 if (mod == null) continue;
 
                 bool isAdded = MultipleAdsModuleManager.IsModuleAdded(mod.Id);
-                bool hasDefine = !string.IsNullOrEmpty(mod.DefineSymbol) && defineSet.Contains(mod.DefineSymbol);
+                bool hasDefine = mod.IsDefault || (!string.IsNullOrEmpty(mod.DefineSymbol) && defineSet.Contains(mod.DefineSymbol));
                 bool isInstalled = mod.IsDefault || MultipleAdsPackageManager.IsSdkInstalledAuto(mod);
-                
-                MultipleAdsPackageManager.ClearSdkOverride(mod.Id);
+                bool? sdkOverride = MultipleAdsPackageManager.GetSdkOverride(mod.Id);
+                bool isEffective = mod.IsDefault || (sdkOverride.HasValue ? sdkOverride.Value : isInstalled);
 
                 string configPath = MultipleAdsPaths.GetProviderConfigAssetPath($"{mod.Id}Config");
                 var config = AssetDatabase.LoadAssetAtPath<BaseAdConfig>(configPath);
@@ -115,9 +90,16 @@ namespace Herghys.MultipleAdsManager.Editor
                         config = AssetDatabase.LoadAssetAtPath<BaseAdConfig>(AssetDatabase.GUIDToAssetPath(guids[0]));
                     }
                 }
-                if (config == null && (isInstalled || isAdded || hasDefine || mod.IsDefault))
+                if (config == null && (isEffective || isAdded || hasDefine || mod.IsDefault))
                 {
-                    config = MultipleAdsConfigGenerator.EnsureProviderConfig(mod);
+                    if (!EditorApplication.isCompiling && !EditorApplication.isUpdating)
+                    {
+                        config = MultipleAdsConfigGenerator.EnsureProviderConfig(mod);
+                    }
+                    else
+                    {
+                        MultipleAdsConfigGenerator.RequestAutoRescan();
+                    }
                 }
 
                 bool testAdsActive = CheckIfNetworkUsesTestAds(mod.NetworkType);
@@ -128,15 +110,14 @@ namespace Herghys.MultipleAdsManager.Editor
                     IsAdded = isAdded,
                     HasDefine = hasDefine,
                     AutoDetected = isInstalled,
-                    SdkOverride = null,
-                    IsEffectiveInstalled = isInstalled,
+                    SdkOverride = sdkOverride,
+                    IsEffectiveInstalled = isEffective,
                     Config = config,
                     HasTestAdsActive = testAdsActive,
                     Scanned = true
                 });
             }
 
-            MultipleAdsPackageManager.SyncSdkInstalledDefines(targetGroup);
             _cachedStates = result;
             return result;
         }
@@ -160,20 +141,26 @@ namespace Herghys.MultipleAdsManager.Editor
         public void ScanThisModule(BuildTargetGroup targetGroup = BuildTargetGroup.Unknown)
         {
             if (Definition == null) return;
+            if (targetGroup == BuildTargetGroup.Unknown)
+                targetGroup = MultipleAdsBuildTargetCompat.SelectedBuildTargetGroup;
 
             MultipleAdsPackageManager.Scan();
+            MultipleAdsPackageManager.ClearSdkOverride(Definition.Id);
+
+            if (!EditorApplication.isCompiling && !EditorApplication.isUpdating)
+            {
+                MultipleAdsPackageManager.SyncSdkInstalledDefines(targetGroup);
+            }
 
             var defineSet = new HashSet<string>(MultipleAdsBuildTargetCompat.GetDefinesList(targetGroup));
 
             IsAdded = MultipleAdsModuleManager.IsModuleAdded(Definition.Id);
-            HasDefine = !string.IsNullOrEmpty(Definition.DefineSymbol) && defineSet.Contains(Definition.DefineSymbol);
+            HasDefine = Definition.IsDefault || (!string.IsNullOrEmpty(Definition.DefineSymbol) && defineSet.Contains(Definition.DefineSymbol));
             bool isInstalled = Definition.IsDefault || MultipleAdsPackageManager.IsSdkInstalledAuto(Definition);
 
-            MultipleAdsPackageManager.ClearSdkOverride(Definition.Id);
             SdkOverride = null;
             AutoDetected = isInstalled;
             IsEffectiveInstalled = isInstalled;
-            MultipleAdsPackageManager.SyncSdkInstalledDefines(targetGroup);
 
             string configPath = MultipleAdsPaths.GetProviderConfigAssetPath($"{Definition.Id}Config");
             Config = AssetDatabase.LoadAssetAtPath<BaseAdConfig>(configPath);
@@ -187,11 +174,20 @@ namespace Herghys.MultipleAdsManager.Editor
             }
             if (Config == null && (isInstalled || IsAdded || HasDefine || Definition.IsDefault))
             {
-                Config = MultipleAdsConfigGenerator.EnsureProviderConfig(Definition);
+                if (!EditorApplication.isCompiling && !EditorApplication.isUpdating)
+                {
+                    Config = MultipleAdsConfigGenerator.EnsureProviderConfig(Definition);
+                }
+                else
+                {
+                    MultipleAdsConfigGenerator.RequestAutoRescan();
+                }
             }
 
             HasTestAdsActive = CheckIfNetworkUsesTestAds(Definition.NetworkType);
             Scanned = true;
+
+            MultipleAdsConfigGenerator.RefreshAllOpenWindows();
 
             string statusMsg = IsEffectiveInstalled ? "Installed / Detected in Project" : "Not Detected in Packages or Assemblies";
 
