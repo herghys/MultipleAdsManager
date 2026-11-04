@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using UnityEngine;
 
 namespace Herghys.MultipleAdsManager.Runtime
@@ -165,6 +165,28 @@ namespace Herghys.MultipleAdsManager.Runtime
                 case AdNetworkType.Vungle:
                     androidId = $"DEFAULT-{type.ToString().ToUpperInvariant()}";
                     iosId = androidId;
+                    break;
+
+                case AdNetworkType.UnityAds:
+                    switch (type)
+                    {
+                        case IAdsType.Banner:
+                            androidId = "Banner_Android";
+                            iosId = "Banner_iOS";
+                            break;
+                        case IAdsType.Interstitial:
+                            androidId = "Interstitial_Android";
+                            iosId = "Interstitial_iOS";
+                            break;
+                        case IAdsType.Rewarded:
+                            androidId = "Rewarded_Android";
+                            iosId = "Rewarded_iOS";
+                            break;
+                        default:
+                            androidId = $"{type}_Android";
+                            iosId = $"{type}_iOS";
+                            break;
+                    }
                     break;
 
                 default:

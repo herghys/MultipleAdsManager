@@ -73,6 +73,9 @@ namespace Herghys.MultipleAdsManager.Runtime
         [Tooltip("Include Vungle / Liftoff ProGuard rules when VUNGLE_ADS is enabled.")]
         [SerializeField] private bool enableProguardVungle = true;
 
+        [Tooltip("Include Unity Ads ProGuard rules when UNITY_ADS is enabled.")]
+        [SerializeField] private bool enableProguardUnityAds = true;
+
         [Header("Editor Mock Settings")]
         [Tooltip("Enable simulated mock ads when running inside Unity Editor. Mock ads are strictly restricted to Unity Editor and never run in player builds.")]
         [SerializeField] private bool enableMockInEditor = true;
@@ -96,7 +99,7 @@ namespace Herghys.MultipleAdsManager.Runtime
         };
 
         [Header("Mediation Provider Configurations")]
-        [Tooltip("Individual ScriptableObject configs for each active ad network (GoogleAds, LevelPlay, AppLovin, Vungle).")]
+        [Tooltip("Individual ScriptableObject configs for each active ad network (GoogleAds, LevelPlay, AppLovin, Vungle, UnityAds).")]
         [SerializeField] private List<BaseAdConfig> providerConfigs = new List<BaseAdConfig>();
 
         public string GlobalAppName { get => globalAppName; set => globalAppName = value; }
@@ -118,6 +121,7 @@ namespace Herghys.MultipleAdsManager.Runtime
         public bool EnableProguardLevelPlay { get => enableProguardLevelPlay; set => enableProguardLevelPlay = value; }
         public bool EnableProguardAppLovin { get => enableProguardAppLovin; set => enableProguardAppLovin = value; }
         public bool EnableProguardVungle { get => enableProguardVungle; set => enableProguardVungle = value; }
+        public bool EnableProguardUnityAds { get => enableProguardUnityAds; set => enableProguardUnityAds = value; }
 
         public List<string> AdPlacementsCatalog => adPlacementsCatalog;
         public List<AdsTypeEntry> AdEntries => adEntries;
@@ -177,7 +181,7 @@ namespace Herghys.MultipleAdsManager.Runtime
             return entry != null ? entry.GetAdIdForProvider(network) : null;
         }
 
-        public void CleanDisabledProviders(bool hasGoogle, bool hasLevelPlay, bool hasAppLovin, bool hasVungle)
+        public void CleanDisabledProviders(bool hasGoogle, bool hasLevelPlay, bool hasAppLovin, bool hasVungle, bool hasUnityAds = false)
         {
             if (adEntries == null) return;
 
@@ -188,6 +192,7 @@ namespace Herghys.MultipleAdsManager.Runtime
                 if (!hasLevelPlay) entry.RemoveProvider(AdNetworkType.LevelPlay);
                 if (!hasAppLovin) entry.RemoveProvider(AdNetworkType.AppLovin);
                 if (!hasVungle) entry.RemoveProvider(AdNetworkType.Vungle);
+                if (!hasUnityAds) entry.RemoveProvider(AdNetworkType.UnityAds);
             }
         }
     }

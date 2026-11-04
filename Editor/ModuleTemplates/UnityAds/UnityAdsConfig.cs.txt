@@ -1,0 +1,23 @@
+using UnityEngine;
+using Herghys.MultipleAdsManager.Runtime;
+
+namespace Herghys.MultipleAdsManager.Modules
+{
+    [CreateAssetMenu(fileName = "UnityAdsConfig", menuName = "MultipleAds/Unity Ads Config", order = 50)]
+    public class UnityAdsConfig : BaseAdConfig
+    {
+        public UnityAdsConfig()
+        {
+            networkName = "UnityAds";
+            networkType = AdNetworkType.UnityAds;
+            enabled = true;
+            appName = "Default Apps";
+            appStoreDetails = "com.DefaultCompany.DefaultApps";
+            androidAppId = "";
+            iosAppId = "";
+            bannerWeight = 50;
+            interstitialWeight = 50;
+            rewardedWeight = 50;
+        }
+    }
+}

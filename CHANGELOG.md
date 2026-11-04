@@ -2,6 +2,11 @@
 
 All notable changes to this package will be documented in this file.
 
+## [1.0.2] - 2026-11-04
+### Added
+- **Unity Ads Module Support**: Added `UnityAds` (`com.unity.ads`) module definition, `UnityAdsConfig` and `UnityAdsProvider` templates (`UNITY_ADS` & `UNITY_ADS_SDK_INSTALLED`), default format test ad IDs (`Banner_Android`/`Banner_iOS`, `Interstitial_Android`/`Interstitial_iOS`, `Rewarded_Android`/`Rewarded_iOS`), and ProGuard rules (`proguard-unityads.txt`).
+- **Android Optimization for Unity Ads**: Added `EnableProguardUnityAds` toggle and `UNITY_ADS` adapter/standalone SDK status in `MultipleAdsOptimizationWindow` and `MultipleAdsAndroidOptimizer`.
+
 ## [1.0.1] - 2026-11-02
 ### Added
 - **Auto-Scan & Auto-Create Configs**: Automatically scan and create `MultipleAdsManager Config` and provider-specific `AdsConfig` assets upon installing or adding an ad provider.

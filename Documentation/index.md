@@ -1,10 +1,10 @@
 # Multiple Ads Manager
 
-Modular mobile ads mediation system for Unity supporting Google Mobile Ads, LevelPlay, AppLovin, Vungle, and MockAds.
+Modular mobile ads mediation system for Unity supporting Google Mobile Ads, LevelPlay, AppLovin, Vungle, Unity Ads, and MockAds.
 
 ## Features
 
-- Multi-network mediation (Google Mobile Ads, Unity LevelPlay, AppLovin MAX, Vungle).
+- Multi-network mediation (Google Mobile Ads, Unity LevelPlay, AppLovin MAX, Vungle, Unity Ads).
 - In-editor and offline testing via built-in MockAds provider.
 - Centralized configuration via ScriptableObject (`MultipleAdsManager Config`).
 - Configurable waterfall and weight-based mediation.

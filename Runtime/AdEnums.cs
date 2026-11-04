@@ -1,4 +1,4 @@
-﻿namespace Herghys.MultipleAdsManager.Runtime
+namespace Herghys.MultipleAdsManager.Runtime
 {
     public enum IAdsType
     {
@@ -31,11 +31,12 @@
 
     public enum AdNetworkType
     {
-        GoogleAds,
-        LevelPlay,
-        AppLovin,
-        Vungle,
-        Mock
+        GoogleAds = 0,
+        LevelPlay = 1,
+        AppLovin = 2,
+        Vungle = 3,
+        Mock = 4,
+        UnityAds = 5
     }
 
     [System.Serializable]

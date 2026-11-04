@@ -1,6 +1,6 @@
 # Multiple Ads Manager
 
-A modular mobile ads mediation system for Unity supporting Google Mobile Ads, LevelPlay, AppLovin, Vungle, and MockAds.
+A modular mobile ads mediation system for Unity supporting Google Mobile Ads, LevelPlay, AppLovin, Vungle, Unity Ads, and MockAds.
 
 ---
 
@@ -26,7 +26,7 @@ Choose one of the installation methods below:
    ```
    *(Optional) To target a specific release tag:*
    ```text
-   https://github.com/herghys/MultipleAdsManager.git#1.0.0
+   https://github.com/herghys/MultipleAdsManager.git#1.0.2
    ```
 5. Click **Add**.
 
@@ -46,7 +46,7 @@ Add the package to your project's `Packages/manifest.json` under `dependencies`:
 ### 2. Via Tarball (`.tgz`)
 
 1. Go to the [GitHub Releases](https://github.com/herghys/MultipleAdsManager/releases) page.
-2. Download the latest `.tgz` package file (e.g., `com.herghys.multipleadsmanager-1.0.0.tgz`).
+2. Download the latest `.tgz` package file (e.g., `com.herghys.multipleadsmanager-1.0.2.tgz`).
 3. In Unity, open **Window** > **Package Manager**.
 4. Click the **+** button and select **Add package from tarball...**.
 5. Browse and select the downloaded `.tgz` file.
@@ -56,7 +56,7 @@ Add the package to your project's `Packages/manifest.json` under `dependencies`:
 ### 3. Via Unity Package (`.unitypackage`)
 
 1. Go to the [GitHub Releases](https://github.com/herghys/MultipleAdsManager/releases) page.
-2. Download the `.unitypackage` file (e.g., `MultipleAdsManager-1.0.0.unitypackage`).
+2. Download the `.unitypackage` file (e.g., `MultipleAdsManager-1.0.2.unitypackage`).
 3. In Unity, go to **Assets** > **Import Package** > **Custom Package...** (or double-click the downloaded file while your Unity project is open).
 4. In the import dialog, ensure all assets are selected and click **Import**.
 
