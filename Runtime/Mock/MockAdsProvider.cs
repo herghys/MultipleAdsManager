@@ -211,7 +211,7 @@ namespace Herghys.MultipleAdsManager.Mock
 
         private GameObject SpawnMockPrefab(string prefabName, BannerPosition position)
         {
-            EnsureEventSystem();
+            //EnsureEventSystem();
             GameObject prefab = null;
 
             // 1. Try Resources.Load from Resources/Mock

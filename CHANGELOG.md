@@ -6,6 +6,8 @@ All notable changes to this package will be documented in this file.
 ### Added
 - **Unity Ads Module Support**: Added `UnityAds` (`com.unity.ads`) module definition, `UnityAdsConfig` and `UnityAdsProvider` templates (`UNITY_ADS` & `UNITY_ADS_SDK_INSTALLED`), default format test ad IDs (`Banner_Android`/`Banner_iOS`, `Interstitial_Android`/`Interstitial_iOS`, `Rewarded_Android`/`Rewarded_iOS`), and ProGuard rules (`proguard-unityads.txt`).
 - **Android Optimization for Unity Ads**: Added `EnableProguardUnityAds` toggle and `UNITY_ADS` adapter/standalone SDK status in `MultipleAdsOptimizationWindow` and `MultipleAdsAndroidOptimizer`.
+### Fixed
+- **Enforce Event Systems for mock disabled
 
 ## [1.0.1] - 2026-11-02
 ### Added
