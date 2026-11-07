@@ -17,7 +17,7 @@ namespace Herghys.MultipleAdsManager
             {
                 if (_instance == null)
                 {
-                    _instance = FindFirstObjectByType<MultipleAdsManager>();
+                    _instance = FindAnyObjectByType<MultipleAdsManager>();
                     if (_instance == null)
                     {
                         var go = new GameObject("MultipleAdsManager");
@@ -126,6 +126,8 @@ namespace Herghys.MultipleAdsManager
                 }
             }
 
+            MultipleAdsConfig.ActiveConfig = config;
+
             var activeConfigs = config.GetActiveConfigs();
             foreach (var providerConfig in activeConfigs)
             {
@@ -140,22 +142,17 @@ namespace Herghys.MultipleAdsManager
                 }
             }
 
-            // Mock provider registration:
-            // 1. Used whenever no real providers are available ("Mock will be used if we don't have anything, can be used anytime")
-            // 2. Used in Unity Editor when EnableMockInEditor is toggled on
-            bool hasMock = registeredProviders.Exists(p => p.NetworkType == AdNetworkType.Mock);
-            bool shouldAddMock = !hasMock && (registeredProviders.Count == 0
 #if UNITY_EDITOR
-                || (config != null && config.EnableMockInEditor)
-#endif
-            );
+            // Mock provider registration:
+            // Strictly restricted to Unity Editor when EnableMockInEditor is toggled on. Never runs at runtime or in player builds.
+            bool hasMock = registeredProviders.Exists(p => p.NetworkType == AdNetworkType.Mock);
+            bool shouldAddMock = !hasMock && (config != null && config.EnableMockInEditor);
 
             if (shouldAddMock)
             {
                 BaseAdConfig mockConfig = config != null ? config.GetConfig(AdNetworkType.Mock) : null;
                 if (mockConfig == null)
                 {
-#if UNITY_EDITOR
                     string mockPath = MultipleAdsPaths.GetProviderConfigAssetPath("MockAdsConfig");
                     mockConfig = UnityEditor.AssetDatabase.LoadAssetAtPath<BaseAdConfig>(mockPath);
                     if (mockConfig == null)
@@ -166,7 +163,6 @@ namespace Herghys.MultipleAdsManager
                             mockConfig = UnityEditor.AssetDatabase.LoadAssetAtPath<BaseAdConfig>(UnityEditor.AssetDatabase.GUIDToAssetPath(guids[0]));
                         }
                     }
-#endif
                     if (mockConfig == null) mockConfig = Resources.Load<BaseAdConfig>("Config/MockAppConfig");
                     if (mockConfig == null) mockConfig = Resources.Load<BaseAdConfig>("Config/MockAdsConfig");
                     if (mockConfig == null) mockConfig = Resources.Load<BaseAdConfig>("MockAdsConfig");
@@ -177,6 +173,7 @@ namespace Herghys.MultipleAdsManager
                 registeredProviders.Add(mockProvider);
                 activeProviderNames.Add(registeredProviders.Count == 1 ? "MockAds (Fallback Simulator)" : "MockAds (Simulator)");
             }
+#endif
 
             foreach (var p in registeredProviders)
             {
@@ -196,6 +193,9 @@ namespace Herghys.MultipleAdsManager
         private IAdProvider CreateProvider(BaseAdConfig adConfig)
         {
             if (adConfig == null) return null;
+#if !UNITY_EDITOR
+            if (adConfig.NetworkType == AdNetworkType.Mock) return null;
+#endif
 
             if (ProviderTypeCache.TryGetValue(adConfig.NetworkType, out Type cachedType) && cachedType != null)
             {
@@ -206,6 +206,26 @@ namespace Herghys.MultipleAdsManager
                 catch { }
             }
 
+#if UNITY_EDITOR
+            var derivedTypes = UnityEditor.TypeCache.GetTypesDerivedFrom<IAdProvider>();
+            foreach (var t in derivedTypes)
+            {
+                if (!t.IsInterface && !t.IsAbstract)
+                {
+                    try
+                    {
+                        var instance = (IAdProvider)Activator.CreateInstance(t);
+                        if (instance.NetworkType == adConfig.NetworkType)
+                        {
+                            ProviderTypeCache[adConfig.NetworkType] = t;
+                            return instance;
+                        }
+                    }
+                    catch { }
+                }
+            }
+#else
+#pragma warning disable UAC0005
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
                 try
@@ -229,6 +249,8 @@ namespace Herghys.MultipleAdsManager
                 }
                 catch { }
             }
+#pragma warning restore UAC0005
+#endif
 
             Debug.LogWarning($"[MultipleAdsManager] No implementation found for provider '{adConfig.NetworkType}'. Ensure its module is added in Assets/MultipleAds/Modules/.");
             return null;
@@ -242,17 +264,7 @@ namespace Herghys.MultipleAdsManager
             var provider = GetCandidateProvider(IAdsType.Banner, placement);
             if (provider != null)
             {
-                var entry = config != null ? config.GetAdEntry(IAdsType.Banner, placement) : null;
-                string adId = null;
-                var providerConfig = config != null ? config.GetConfig(provider.NetworkType) : null;
-                if (providerConfig != null && providerConfig.IsTestAdIdActive(IAdsType.Banner))
-                {
-                    adId = providerConfig.GetTestAdId(IAdsType.Banner);
-                }
-                else if (entry != null)
-                {
-                    adId = entry.GetAdIdForProvider(provider.NetworkType);
-                }
+                string adId = GetAdIdForProvider(provider, IAdsType.Banner, placement);
                 provider.ShowBanner(position, adId, placement);
             }
         }
@@ -272,11 +284,13 @@ namespace Herghys.MultipleAdsManager
 
             placement = ResolvePlacement(IAdsType.Banner, placement);
             var provider = GetCandidateProvider(IAdsType.Banner, placement);
+#if UNITY_EDITOR
             if (provider == null)
             {
-                // Fallback to Mock provider if available
+                // Fallback to Mock provider in Unity Editor only
                 provider = registeredProviders.Find(p => p.NetworkType == AdNetworkType.Mock);
             }
+#endif
 
             if (provider == null)
             {
@@ -284,22 +298,7 @@ namespace Herghys.MultipleAdsManager
                 return;
             }
 
-            var entry = config != null ? config.GetAdEntry(IAdsType.Banner, placement) : null;
-            string adId = null;
-            var providerConfig = config != null ? config.GetConfig(provider.NetworkType) : null;
-            if (providerConfig != null && providerConfig.IsTestAdIdActive(IAdsType.Banner))
-            {
-                adId = providerConfig.GetTestAdId(IAdsType.Banner);
-            }
-            else if (entry != null)
-            {
-                adId = entry.GetAdIdForProvider(provider.NetworkType);
-            }
-
-            if (provider.NetworkType == AdNetworkType.Mock)
-            {
-                adId = AdsTypeEntry.GetDefaultMockId(IAdsType.Banner);
-            }
+            string adId = GetAdIdForProvider(provider, IAdsType.Banner, placement);
 
             foreach (var p in registeredProviders)
             {
@@ -416,12 +415,20 @@ namespace Herghys.MultipleAdsManager
                 }
             }
 
-            // Fallback: Mock provider is always ready
+#if UNITY_EDITOR
+            // Fallback: Mock provider is only available in Unity Editor
             var mock = registeredProviders.Find(p => p.NetworkType == AdNetworkType.Mock);
             return mock != null && mock.IsInitialized && mock.IsInterstitialReady;
+#else
+            return false;
+#endif
         }
 
-        public void ShowInterstitial(string placement = null, Action onClosed = null)
+        public void ShowInterstitial(Action onClosed) => ShowInterstitial(null, null, onClosed);
+        public void ShowInterstitial(Action onOpened, Action onClosed) => ShowInterstitial(null, onOpened, onClosed);
+        public void ShowInterstitial(string placement, Action onClosed) => ShowInterstitial(placement, null, onClosed);
+
+        public void ShowInterstitial(string placement = null, Action onOpened = null, Action onClosed = null)
         {
             placement = ResolvePlacement(IAdsType.Interstitial, placement);
             var entry = config != null ? config.GetAdEntry(IAdsType.Interstitial, placement) : null;
@@ -433,27 +440,43 @@ namespace Herghys.MultipleAdsManager
                 {
                     NotifyFullScreenOpened();
 
-                    provider.ShowInterstitial(adId, placement, () =>
-                    {
-                        NotifyFullScreenClosed();
-                        onClosed?.Invoke();
-                    });
+                    provider.ShowInterstitial(
+                        adUnitId: adId,
+                        placement: placement,
+                        onOpened: () =>
+                        {
+                            onOpened?.Invoke();
+                        },
+                        onClosed: () =>
+                        {
+                            NotifyFullScreenClosed();
+                            onClosed?.Invoke();
+                        });
                     return;
                 }
             }
 
-            // Fallback: If no real SDK ad was ready, but Mock provider is available, use Mock!
+#if UNITY_EDITOR
+            // Fallback: If no real SDK ad was ready, but Mock provider is available, use Mock in Editor only
             var mockProvider = registeredProviders.Find(p => p.NetworkType == AdNetworkType.Mock);
             if (mockProvider != null && mockProvider.IsInitialized)
             {
                 NotifyFullScreenOpened();
-                mockProvider.ShowInterstitial(AdsTypeEntry.GetDefaultMockId(IAdsType.Interstitial), placement, () =>
-                {
-                    NotifyFullScreenClosed();
-                    onClosed?.Invoke();
-                });
+                mockProvider.ShowInterstitial(
+                    adUnitId: AdsTypeEntry.GetDefaultMockId(IAdsType.Interstitial),
+                    placement: placement,
+                    onOpened: () =>
+                    {
+                        onOpened?.Invoke();
+                    },
+                    onClosed: () =>
+                    {
+                        NotifyFullScreenClosed();
+                        onClosed?.Invoke();
+                    });
                 return;
             }
+#endif
 
             Debug.LogWarning($"[MultipleAdsManager] No interstitial ad ready for placement '{placement}'. Requesting new preload.");
             PrepareInterstitial(placement);
@@ -495,17 +518,55 @@ namespace Herghys.MultipleAdsManager
                 }
             }
 
-            // Fallback: Mock provider is always ready
+#if UNITY_EDITOR
+            // Fallback: Mock provider is only available in Unity Editor
             var mock = registeredProviders.Find(p => p.NetworkType == AdNetworkType.Mock);
             return mock != null && mock.IsInitialized && mock.IsRewardedReady;
+#else
+            return false;
+#endif
         }
 
-        public void ShowRewarded(string placement = null, Action onRewardEarned = null, Action onClosed = null)
+        public void ShowRewarded(Action onRewardEarned, Action onClosed = null)
         {
-            ShowRewarded(placement, (reward) => onRewardEarned?.Invoke(), onClosed);
+            ShowRewarded(null, onRewardEarned, null, onClosed);
         }
 
-        public void ShowRewarded(string placement, Action<AdReward> onRewardEarned, Action onClosed = null)
+        public void ShowRewarded(Action onRewardEarned, Action onOpened, Action onClosed)
+        {
+            ShowRewarded(null, onRewardEarned, onOpened, onClosed);
+        }
+
+        public void ShowRewarded(string placement, Action onRewardEarned, Action onClosed)
+        {
+            ShowRewarded(placement, onRewardEarned, null, onClosed);
+        }
+
+        public void ShowRewarded(string placement = null, Action onRewardEarned = null, Action onOpened = null, Action onClosed = null)
+        {
+            ShowRewarded(
+                placement: placement,
+                onRewardEarned: onRewardEarned != null ? (Action<AdReward>)((reward) => onRewardEarned.Invoke()) : null,
+                onOpened: onOpened,
+                onClosed: onClosed);
+        }
+
+        public void ShowRewarded(Action<AdReward> onRewardEarned, Action onClosed = null)
+        {
+            ShowRewarded(null, onRewardEarned, null, onClosed);
+        }
+
+        public void ShowRewarded(Action<AdReward> onRewardEarned, Action onOpened, Action onClosed)
+        {
+            ShowRewarded(null, onRewardEarned, onOpened, onClosed);
+        }
+
+        public void ShowRewarded(string placement, Action<AdReward> onRewardEarned, Action onClosed)
+        {
+            ShowRewarded(placement, onRewardEarned, null, onClosed);
+        }
+
+        public void ShowRewarded(string placement, Action<AdReward> onRewardEarned, Action onOpened, Action onClosed)
         {
             placement = ResolvePlacement(IAdsType.Rewarded, placement);
             var entry = config != null ? config.GetAdEntry(IAdsType.Rewarded, placement) : null;
@@ -517,33 +578,51 @@ namespace Herghys.MultipleAdsManager
                 {
                     NotifyFullScreenOpened();
 
-                    provider.ShowRewarded(adId, placement, (reward) =>
-                    {
-                        onRewardEarned?.Invoke(reward);
-                    }, () =>
-                    {
-                        NotifyFullScreenClosed();
-                        onClosed?.Invoke();
-                    });
+                    provider.ShowRewarded(
+                        adUnitId: adId,
+                        placement: placement,
+                        onRewardEarned: (reward) =>
+                        {
+                            onRewardEarned?.Invoke(reward);
+                        },
+                        onOpened: () =>
+                        {
+                            onOpened?.Invoke();
+                        },
+                        onClosed: () =>
+                        {
+                            NotifyFullScreenClosed();
+                            onClosed?.Invoke();
+                        });
                     return;
                 }
             }
 
-            // Fallback: If no real SDK ad was ready, but Mock provider is available, use Mock!
+#if UNITY_EDITOR
+            // Fallback: If no real SDK ad was ready, but Mock provider is available, use Mock in Editor only
             var mockProvider = registeredProviders.Find(p => p.NetworkType == AdNetworkType.Mock);
             if (mockProvider != null && mockProvider.IsInitialized)
             {
                 NotifyFullScreenOpened();
-                mockProvider.ShowRewarded(AdsTypeEntry.GetDefaultMockId(IAdsType.Rewarded), placement, (reward) =>
-                {
-                    onRewardEarned?.Invoke(reward);
-                }, () =>
-                {
-                    NotifyFullScreenClosed();
-                    onClosed?.Invoke();
-                });
+                mockProvider.ShowRewarded(
+                    adUnitId: AdsTypeEntry.GetDefaultMockId(IAdsType.Rewarded),
+                    placement: placement,
+                    onRewardEarned: (reward) =>
+                    {
+                        onRewardEarned?.Invoke(reward);
+                    },
+                    onOpened: () =>
+                    {
+                        onOpened?.Invoke();
+                    },
+                    onClosed: () =>
+                    {
+                        NotifyFullScreenClosed();
+                        onClosed?.Invoke();
+                    });
                 return;
             }
+#endif
 
             Debug.LogWarning($"[MultipleAdsManager] No rewarded ad ready for placement '{placement}'. Requesting new preload.");
             PrepareRewarded(placement);
@@ -624,23 +703,12 @@ namespace Herghys.MultipleAdsManager
             foreach (var provider in registeredProviders)
             {
                 if (provider == null || !provider.IsInitialized) continue;
+#if !UNITY_EDITOR
+                if (provider.NetworkType == AdNetworkType.Mock) continue;
+#endif
                 if (adType == IAdsType.Banner && !provider.IsBannerSupported) continue;
 
-                string adId = null;
-                var providerConfig = config != null ? config.GetConfig(provider.NetworkType) : null;
-                if (providerConfig != null && providerConfig.IsTestAdIdActive(adType))
-                {
-                    adId = providerConfig.GetTestAdId(adType);
-                }
-                else if (entry != null)
-                {
-                    adId = entry.GetAdIdForProvider(provider.NetworkType);
-                }
-
-                if (provider.NetworkType == AdNetworkType.Mock)
-                {
-                    adId = AdsTypeEntry.GetDefaultMockId(adType);
-                }
+                string adId = GetAdIdForProvider(provider, adType, entry?.AdPlacement ?? entry?.AdName);
 
                 if (!string.IsNullOrEmpty(adId))
                 {
@@ -673,6 +741,33 @@ namespace Herghys.MultipleAdsManager
             }
 
             return list;
+        }
+
+        private string GetAdIdForProvider(IAdProvider provider, IAdsType adType, string placement)
+        {
+            if (provider == null) return null;
+
+#if UNITY_EDITOR
+            if (provider.NetworkType == AdNetworkType.Mock)
+            {
+                return AdsTypeEntry.GetDefaultMockId(adType);
+            }
+#else
+            if (provider.NetworkType == AdNetworkType.Mock)
+            {
+                return null;
+            }
+#endif
+
+            var entry = config != null ? config.GetAdEntry(adType, placement) : null;
+            var providerConfig = config != null ? config.GetConfig(provider.NetworkType) : null;
+
+            if (entry != null)
+            {
+                return entry.GetAdIdForProvider(provider.NetworkType, providerConfig);
+            }
+
+            return null;
         }
 
         #endregion

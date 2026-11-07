@@ -31,9 +31,6 @@ namespace Herghys.MultipleAdsManager.Runtime
         [SerializeField] private string globalPackageName = "";
 
         [Header("General Settings")]
-        [Tooltip("When enabled, test ads and mock providers can be forced.")]
-        [SerializeField] private bool testMode = true;
-
         [Tooltip("List of test device IDs (hashed Android ID or GAID/IDFA).")]
         [SerializeField] private List<string> testDeviceIds = new List<string>();
 
@@ -76,9 +73,12 @@ namespace Herghys.MultipleAdsManager.Runtime
         [Tooltip("Include Unity Ads ProGuard rules when UNITY_ADS is enabled.")]
         [SerializeField] private bool enableProguardUnityAds = true;
 
-        [Header("Editor Mock Settings")]
+        [Header("Editor Mock & Testing Settings")]
         [Tooltip("Enable simulated mock ads when running inside Unity Editor. Mock ads are strictly restricted to Unity Editor and never run in player builds.")]
         [SerializeField] private bool enableMockInEditor = true;
+
+        [Tooltip("When enabled, requests in Unity Editor will use test ad IDs and test mode instead of production ad IDs. Test ads are strictly restricted to Unity Editor (#UNITY_EDITOR) and never run in player builds.")]
+        [SerializeField] private bool useTestAdsOnEditor = true;
 
         [Header("Ad Placement Catalog")]
         [Tooltip("Predefined collection of ad placements / names across your game. Pick from this list to eliminate typos.")]
@@ -102,13 +102,27 @@ namespace Herghys.MultipleAdsManager.Runtime
         [Tooltip("Individual ScriptableObject configs for each active ad network (GoogleAds, LevelPlay, AppLovin, Vungle, UnityAds).")]
         [SerializeField] private List<BaseAdConfig> providerConfigs = new List<BaseAdConfig>();
 
+        public static MultipleAdsConfig ActiveConfig { get; internal set; }
+
         public string GlobalAppName { get => globalAppName; set => globalAppName = value; }
         public string GlobalPackageName { get => globalPackageName; set => globalPackageName = value; }
 
-        public bool TestMode { get => testMode; set => testMode = value; }
+        public bool TestMode
+        {
+            get
+            {
+#if UNITY_EDITOR
+                return useTestAdsOnEditor;
+#else
+                return false;
+#endif
+            }
+            set => useTestAdsOnEditor = value;
+        }
         public List<string> TestDeviceIds => testDeviceIds;
         public bool TargetAdsForChildren { get => targetAdsForChildren; set => targetAdsForChildren = value; }
         public bool EnableMockInEditor { get => enableMockInEditor; set => enableMockInEditor = value; }
+        public bool UseTestAdsOnEditor { get => useTestAdsOnEditor; set => useTestAdsOnEditor = value; }
 
         public bool StripFineLocation { get => stripFineLocation; set => stripFineLocation = value; }
         public bool StripCoarseLocation { get => stripCoarseLocation; set => stripCoarseLocation = value; }
@@ -129,11 +143,17 @@ namespace Herghys.MultipleAdsManager.Runtime
 
         public BaseAdConfig GetConfig(AdNetworkType type)
         {
+#if !UNITY_EDITOR
+            if (type == AdNetworkType.Mock) return null;
+#endif
             return providerConfigs.Find(s => s != null && s.NetworkType == type && s.Enabled);
         }
 
         public BaseAdConfig GetProviderConfig(AdNetworkType type)
         {
+#if !UNITY_EDITOR
+            if (type == AdNetworkType.Mock) return null;
+#endif
             if (providerConfigs == null) return null;
             return providerConfigs.Find(s => s != null && s.NetworkType == type);
         }
@@ -166,19 +186,21 @@ namespace Herghys.MultipleAdsManager.Runtime
 
         public string GetAdId(AdNetworkType network, IAdsType type, string placement = null)
         {
+#if UNITY_EDITOR
             if (network == AdNetworkType.Mock)
             {
                 return AdsTypeEntry.GetDefaultMockId(type);
             }
+#else
+            if (network == AdNetworkType.Mock)
+            {
+                return null;
+            }
+#endif
 
             var providerConfig = GetConfig(network);
-            if (providerConfig != null && providerConfig.IsTestAdIdActive(type))
-            {
-                return providerConfig.GetTestAdId(type);
-            }
-
             var entry = GetAdEntry(type, placement);
-            return entry != null ? entry.GetAdIdForProvider(network) : null;
+            return entry != null ? entry.GetAdIdForProvider(network, providerConfig) : null;
         }
 
         public void CleanDisabledProviders(bool hasGoogle, bool hasLevelPlay, bool hasAppLovin, bool hasVungle, bool hasUnityAds = false)

@@ -159,33 +159,24 @@ namespace Herghys.MultipleAdsManager.Editor
                 if (direct != null && typeof(BaseAdConfig).IsAssignableFrom(direct)) return direct;
             }
 
-            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+            var derivedConfigs = TypeCache.GetTypesDerivedFrom<BaseAdConfig>();
+            foreach (var t in derivedConfigs)
             {
-                foreach (var name in candidateNames)
+                if (string.Equals(t.Name, className, StringComparison.OrdinalIgnoreCase))
                 {
-                    try
-                    {
-                        var t = assembly.GetType(name, false, true);
-                        if (t != null && typeof(BaseAdConfig).IsAssignableFrom(t)) return t;
-                    }
-                    catch { }
+                    return t;
                 }
             }
 
-            // Fallback: search all types in all assemblies
-            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+            foreach (var name in candidateNames)
             {
-                try
+                foreach (var t in derivedConfigs)
                 {
-                    foreach (var t in assembly.GetTypes())
+                    if (string.Equals(t.FullName, name, StringComparison.OrdinalIgnoreCase))
                     {
-                        if (string.Equals(t.Name, className, StringComparison.OrdinalIgnoreCase) && typeof(BaseAdConfig).IsAssignableFrom(t))
-                        {
-                            return t;
-                        }
+                        return t;
                     }
                 }
-                catch { }
             }
 
             return null;
@@ -317,12 +308,10 @@ namespace Herghys.MultipleAdsManager.Editor
             {
                 // 1. Check MultipleAdsManager Config
                 var config = GetConfig();
-                bool createdMain = false;
                 if (config == null)
                 {
                     Debug.Log("[MultipleAds] MultipleAdsManager Config asset is missing. Auto-generating default configuration asset...");
                     config = RegenerateConfig(false);
-                    createdMain = true;
                 }
                 else
                 {

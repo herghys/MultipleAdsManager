@@ -103,7 +103,13 @@ namespace Herghys.MultipleAdsManager.Samples
             if (MultipleAdsManager.Instance == null) return;
 
             LogEvent($"Requesting to Show Interstitial ({interstitialPlacement})");
-            MultipleAdsManager.Instance.ShowInterstitial(interstitialPlacement, () =>
+            MultipleAdsManager.Instance.ShowInterstitial(
+                interstitialPlacement,
+                onOpened: () =>
+                {
+                    LogEvent("Interstitial ad opened.");
+                },
+                onClosed: () =>
             {
                 LogEvent("Interstitial ad was closed by user.");
             });
@@ -127,6 +133,10 @@ namespace Herghys.MultipleAdsManager.Samples
                 {
                     rewardedPoints += 50;
                     LogEvent($"Reward Earned! +50 points (Total: {rewardedPoints})");
+                },
+                onOpened: () =>
+                {
+                    LogEvent("Rewarded ad opened.");
                 },
                 onClosed: () =>
                 {

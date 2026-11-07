@@ -137,6 +137,23 @@ namespace Herghys.MultipleAdsManager.Editor
                 EditorUtility.SetDirty(mainConfig);
             }
 
+            EditorGUILayout.Space(2);
+
+            EditorGUI.BeginChangeCheck();
+            bool testAdsInEditor = EditorGUILayout.ToggleLeft(
+                new GUIContent(
+                    " Use Test Ads On Editor",
+                    "When running inside Unity Editor (#UNITY_EDITOR), ad providers use official test ad IDs and test mode instead of production ads. Test ads are strictly restricted to Unity Editor and never run in player builds."
+                ),
+                mainConfig.UseTestAdsOnEditor
+            );
+            if (EditorGUI.EndChangeCheck())
+            {
+                Undo.RecordObject(mainConfig, "Toggle Test Ads in Editor");
+                mainConfig.UseTestAdsOnEditor = testAdsInEditor;
+                EditorUtility.SetDirty(mainConfig);
+            }
+
             EditorGUILayout.EndVertical();
         }
 

@@ -481,13 +481,15 @@ namespace Herghys.MultipleAdsManager.Editor
                                 EditorGUI.BeginChangeCheck();
                                 bool curUseTest = pEntry != null && pEntry.UseTestAdId;
                                 bool newUseTest = EditorGUILayout.ToggleLeft(
-                                    new GUIContent("Use Test Ad ID", $"When enabled, automatically uses the {entry.AdType} test ad unit ID from {net} config."),
+                                    new GUIContent("Use Test Ad ID (Editor Only)", $"When enabled, uses the official {entry.AdType} test ad unit ID from {net} config in Unity Editor (#UNITY_EDITOR) instead of the real ad ID. Real production IDs are still used in runtime player builds."),
                                     curUseTest
                                 );
                                 if (EditorGUI.EndChangeCheck())
                                 {
                                     Undo.RecordObject(config, $"Toggle {net} Test Ad ID for {entry.AdName}");
-                                    entry.SetProviderEntry(net, entry.GetAdIdForProvider(net, false) ?? "", entry.GetAdIdForProvider(net, true) ?? "", newUseTest);
+                                    string existingAndroid = pEntry != null ? pEntry.AndroidAdId : "";
+                                    string existingIos = pEntry != null ? pEntry.IosAdId : "";
+                                    entry.SetProviderEntry(net, existingAndroid, existingIos, newUseTest);
                                     EditorUtility.SetDirty(config);
                                 }
 
@@ -498,26 +500,25 @@ namespace Herghys.MultipleAdsManager.Editor
                                     string testIos = provConfig != null ? provConfig.GetTestAdId(entry.AdType, true) : "";
 
                                     EditorGUILayout.BeginVertical(EditorStyles.helpBox);
-                                    EditorGUILayout.LabelField($"Format Test Ad ID ({entry.AdType})", EditorStyles.miniBoldLabel);
+                                    EditorGUILayout.LabelField($"Active Test Ad ID ({entry.AdType}) - [Used in Editor for this Ad]", EditorStyles.miniBoldLabel);
                                     EditorGUILayout.LabelField("Android Test ID:", string.IsNullOrEmpty(testAndroid) ? "(None configured in module)" : testAndroid, EditorStyles.wordWrappedMiniLabel);
                                     EditorGUILayout.LabelField("iOS Test ID:", string.IsNullOrEmpty(testIos) ? "(None configured in module)" : testIos, EditorStyles.wordWrappedMiniLabel);
                                     EditorGUILayout.EndVertical();
                                 }
-                                else
+
+                                EditorGUI.BeginChangeCheck();
+                                string curAndroid = pEntry != null ? pEntry.AndroidAdId : "";
+                                string curIos = pEntry != null ? pEntry.IosAdId : "";
+
+                                EditorGUILayout.LabelField(newUseTest ? "Production Ad Unit IDs (Enforced for Runtime / Builds):" : "Production Ad Unit IDs:", EditorStyles.miniBoldLabel);
+                                string newAndroid = EditorGUILayout.TextField("Android Unit ID", curAndroid);
+                                string newIos = EditorGUILayout.TextField("iOS Unit ID", curIos);
+
+                                if (EditorGUI.EndChangeCheck())
                                 {
-                                    EditorGUI.BeginChangeCheck();
-                                    string curAndroid = entry.GetAdIdForProvider(net, false) ?? "";
-                                    string curIos = entry.GetAdIdForProvider(net, true) ?? "";
-
-                                    string newAndroid = EditorGUILayout.TextField("Android Unit ID", curAndroid);
-                                    string newIos = EditorGUILayout.TextField("iOS Unit ID", curIos);
-
-                                    if (EditorGUI.EndChangeCheck())
-                                    {
-                                        Undo.RecordObject(config, $"Edit {net} Ad Unit IDs");
-                                        entry.SetProviderEntry(net, newAndroid, newIos, false);
-                                        EditorUtility.SetDirty(config);
-                                    }
+                                    Undo.RecordObject(config, $"Edit {net} Ad Unit IDs");
+                                    entry.SetProviderEntry(net, newAndroid, newIos, newUseTest);
+                                    EditorUtility.SetDirty(config);
                                 }
                             }
 

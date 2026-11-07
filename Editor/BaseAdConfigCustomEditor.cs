@@ -1,4 +1,4 @@
-﻿using UnityEditor;
+using UnityEditor;
 using UnityEngine;
 using Herghys.MultipleAdsManager.Runtime;
 
@@ -125,8 +125,8 @@ namespace Herghys.MultipleAdsManager.Editor
             if (config == null) return;
 
             EditorGUILayout.Space();
-            EditorGUILayout.LabelField("Format Test Ad IDs (Reference Library)", EditorStyles.boldLabel);
-            EditorGUILayout.LabelField("These format-specific test IDs are automatically utilized when 'Use Test Ad ID' is enabled on an ad unit.", EditorStyles.wordWrappedMiniLabel);
+            EditorGUILayout.LabelField("Format Test Ad IDs (Reference Library) [Editor Only]", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField("These format-specific test IDs are strictly restricted to Unity Editor (#UNITY_EDITOR). They are never used in player builds.", EditorStyles.wordWrappedMiniLabel);
 
             var testAdIdsProp = serializedObject.FindProperty("testAdIds");
             config.EnsureDefaultTestAdIds(false);

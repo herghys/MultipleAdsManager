@@ -24,8 +24,7 @@ namespace Herghys.MultipleAdsManager.Editor
         {
             // 1. Check for any existing instances in the scene (including inactive GameObjects)
             MultipleAdsManager[] allManagers = Object.FindObjectsByType<MultipleAdsManager>(
-                FindObjectsInactive.Include,
-                FindObjectsSortMode.None
+                FindObjectsInactive.Include
             );
 
             if (allManagers != null && allManagers.Length > 0)

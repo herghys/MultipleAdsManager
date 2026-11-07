@@ -45,18 +45,34 @@ namespace Herghys.MultipleAdsManager.Runtime
         public string AppName { get => appName; set => appName = value; }
         public string AppStoreDetails { get => appStoreDetails; set => appStoreDetails = value; }
 
-        public bool UseTestAdIds { get => useTestAdIds; set => useTestAdIds = value; }
+        public bool UseTestAdIds
+        {
+            get
+            {
+#if UNITY_EDITOR
+                return useTestAdIds;
+#else
+                return false;
+#endif
+            }
+            set => useTestAdIds = value;
+        }
         public System.Collections.Generic.List<TestAdIdEntry> TestAdIds => testAdIds;
 
         public virtual bool IsTestAdIdActive(IAdsType type)
         {
+#if UNITY_EDITOR
             if (testAdIds == null) return false;
             var entry = testAdIds.Find(t => t != null && t.AdType == type);
             return entry != null && entry.Enabled && entry.HasValidTestId;
+#else
+            return false;
+#endif
         }
 
         public virtual string GetTestAdId(IAdsType type)
         {
+#if UNITY_EDITOR
             if (testAdIds == null) return null;
             var entry = testAdIds.Find(t => t != null && t.AdType == type);
             if (entry != null && entry.Enabled && !string.IsNullOrWhiteSpace(entry.TestAdId))
@@ -64,10 +80,14 @@ namespace Herghys.MultipleAdsManager.Runtime
                 return entry.TestAdId;
             }
             return null;
+#else
+            return null;
+#endif
         }
 
         public string GetTestAdId(IAdsType type, bool isIos)
         {
+#if UNITY_EDITOR
             if (testAdIds == null) return null;
             var entry = testAdIds.Find(t => t != null && t.AdType == type);
             if (entry != null && entry.Enabled)
@@ -77,6 +97,9 @@ namespace Herghys.MultipleAdsManager.Runtime
                 return entry.TestAdId;
             }
             return null;
+#else
+            return null;
+#endif
         }
 
         public virtual void EnsureDefaultTestAdIds(bool overwrite = false)

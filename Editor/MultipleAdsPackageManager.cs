@@ -94,6 +94,7 @@ namespace Herghys.MultipleAdsManager.Editor
                     return true;
                 }
 
+#pragma warning disable UAC0005
                 foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
                 {
                     try
@@ -106,6 +107,7 @@ namespace Herghys.MultipleAdsManager.Editor
                     }
                     catch { }
                 }
+#pragma warning restore UAC0005
             }
 
             _typePresentCache[typeName] = false;

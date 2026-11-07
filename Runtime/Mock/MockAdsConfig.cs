@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using Herghys.MultipleAdsManager.Runtime;
 
 namespace Herghys.MultipleAdsManager.Mock
@@ -19,6 +19,19 @@ namespace Herghys.MultipleAdsManager.Mock
             interstitialWeight = 20;
             rewardedWeight = 20;
             useTestAdIds = false;
+        }
+
+        public new bool Enabled
+        {
+            get
+            {
+#if UNITY_EDITOR
+                return enabled;
+#else
+                return false;
+#endif
+            }
+            set => enabled = value;
         }
 
         public override void EnsureDefaultTestAdIds(bool overwrite = false)

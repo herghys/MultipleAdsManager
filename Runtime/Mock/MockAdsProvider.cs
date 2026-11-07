@@ -17,8 +17,13 @@ namespace Herghys.MultipleAdsManager.Mock
         public int RewardedWeight { get; set; } = 10;
 
         public bool IsBannerSupported => true;
+#if UNITY_EDITOR
         public bool IsInterstitialReady => isInterstitialLoaded;
         public bool IsRewardedReady => isRewardedLoaded;
+#else
+        public bool IsInterstitialReady => false;
+        public bool IsRewardedReady => false;
+#endif
 
         public event Action<IAdsType> OnAdLoaded;
         public event Action<IAdsType, string> OnAdFailedToLoad { add { } remove { } }
@@ -61,6 +66,11 @@ namespace Herghys.MultipleAdsManager.Mock
 
         public void Initialize(BaseAdConfig config, List<string> testDeviceIds, bool targetAdsForChildren = false, Action<bool> onInitialized = null)
         {
+#if !UNITY_EDITOR
+            isInitialized = false;
+            onInitialized?.Invoke(false);
+            return;
+#else
             isInitialized = true;
             if (config != null)
             {
@@ -70,10 +80,14 @@ namespace Herghys.MultipleAdsManager.Mock
             }
             Debug.Log($"[MockAdsProvider] Initialized successfully (TargetAdsForChildren: {targetAdsForChildren}).");
             onInitialized?.Invoke(true);
+#endif
         }
 
         public void ShowBanner(BannerPosition position, string adUnitId = null, string placement = null)
         {
+#if !UNITY_EDITOR
+            return;
+#else
             visibleBanners.Add(position);
 
             if (activeBannerObjects.TryGetValue(position, out GameObject existing) && existing != null)
@@ -96,6 +110,7 @@ namespace Herghys.MultipleAdsManager.Mock
 
             Debug.Log($"[MockAdsProvider] Banner Shown ({position}, ID: {adUnitId}, Placement: {placement}).");
             OnAdShown?.Invoke(IAdsType.Banner);
+#endif
         }
 
         public void HideBanner(BannerPosition position)
@@ -125,15 +140,20 @@ namespace Herghys.MultipleAdsManager.Mock
             OnAdLoaded?.Invoke(IAdsType.Interstitial);
         }
 
-        public void ShowInterstitial(Action onClosed = null)
+        public void ShowInterstitial(Action onOpened = null, Action onClosed = null)
         {
-            ShowInterstitial(null, null, onClosed);
+            ShowInterstitial(null, null, onOpened, onClosed);
         }
 
-        public void ShowInterstitial(string adUnitId, string placement, Action onClosed = null)
+        public void ShowInterstitial(string adUnitId, string placement, Action onOpened = null, Action onClosed = null)
         {
+#if !UNITY_EDITOR
+            onClosed?.Invoke();
+            return;
+#else
             Debug.Log($"[MockAdsProvider] Showing Interstitial (ID: {adUnitId}, Placement: {placement}).");
             OnAdShown?.Invoke(IAdsType.Interstitial);
+            onOpened?.Invoke();
 
             GameObject adObj = SpawnMockPrefab("MockInterstitialAd", BannerPosition.Center);
             if (adObj != null)
@@ -155,6 +175,7 @@ namespace Herghys.MultipleAdsManager.Mock
             OnAdClosed?.Invoke(IAdsType.Interstitial);
             onClosed?.Invoke();
             LoadInterstitial(adUnitId, placement);
+#endif
         }
 
         public void LoadRewarded(string adUnitId = null, string placement = null)
@@ -163,21 +184,26 @@ namespace Herghys.MultipleAdsManager.Mock
             OnAdLoaded?.Invoke(IAdsType.Rewarded);
         }
 
-        public void ShowRewarded(Action onRewardEarned, Action onClosed = null)
+        public void ShowRewarded(Action onRewardEarned, Action onOpened = null, Action onClosed = null)
         {
-            ShowRewarded(null, null, onRewardEarned, onClosed);
+            ShowRewarded(null, null, onRewardEarned, onOpened, onClosed);
         }
 
-        public void ShowRewarded(string adUnitId, string placement, Action onRewardEarned, Action onClosed = null)
+        public void ShowRewarded(string adUnitId, string placement, Action onRewardEarned, Action onOpened = null, Action onClosed = null)
         {
-            ShowRewarded(adUnitId, placement, (reward) => onRewardEarned?.Invoke(), onClosed);
+            ShowRewarded(adUnitId, placement, (reward) => onRewardEarned?.Invoke(), onOpened, onClosed);
         }
 
-        public void ShowRewarded(string adUnitId, string placement, Action<AdReward> onRewardEarned, Action onClosed = null)
+        public void ShowRewarded(string adUnitId, string placement, Action<AdReward> onRewardEarned, Action onOpened = null, Action onClosed = null)
         {
+#if !UNITY_EDITOR
+            onClosed?.Invoke();
+            return;
+#else
             var reward = new AdReward("Continue_Play", 1);
             Debug.Log($"[MockAdsProvider] Showing Rewarded Ad (ID: {adUnitId}, Placement: {placement} - Reward: {reward.ItemName} x{reward.Amount}).");
             OnAdShown?.Invoke(IAdsType.Rewarded);
+            onOpened?.Invoke();
 
             GameObject adObj = SpawnMockPrefab("MockRewardedAd", BannerPosition.Center);
             if (adObj != null)
@@ -207,6 +233,7 @@ namespace Herghys.MultipleAdsManager.Mock
             OnAdClosed?.Invoke(IAdsType.Rewarded);
             onClosed?.Invoke();
             LoadRewarded(adUnitId, placement);
+#endif
         }
 
         private GameObject SpawnMockPrefab(string prefabName, BannerPosition position)
@@ -260,28 +287,7 @@ namespace Herghys.MultipleAdsManager.Mock
 
         private static void EnsureEventSystem()
         {
-            if (UnityEngine.EventSystems.EventSystem.current == null)
-            {
-                var existing = UnityEngine.Object.FindFirstObjectByType<UnityEngine.EventSystems.EventSystem>();
-                if (existing == null)
-                {
-                    var es = new GameObject("EventSystem");
-                    es.AddComponent<UnityEngine.EventSystems.EventSystem>();
-
-                    // Support New Input System or Fallback to StandaloneInputModule
-                    Type inputSystemModuleType = Type.GetType("UnityEngine.InputSystem.UI.InputSystemUIInputModule, Unity.InputSystem");
-                    if (inputSystemModuleType != null)
-                    {
-                        es.AddComponent(inputSystemModuleType);
-                    }
-                    else
-                    {
-                        es.AddComponent<UnityEngine.EventSystems.StandaloneInputModule>();
-                    }
-
-                    UnityEngine.Object.DontDestroyOnLoad(es);
-                }
-            }
+            // EventSystem creation is disabled to prevent conflicting with the project's input setup.
         }
 
         private GameObject CreateProceduralMockAd(string prefabName, BannerPosition position)

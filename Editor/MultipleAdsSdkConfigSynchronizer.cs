@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Reflection;
 using System.Text.RegularExpressions;
@@ -392,6 +392,7 @@ namespace Herghys.MultipleAdsManager.Editor
             Type direct = Type.GetType(typeName);
             if (direct != null) return direct;
 
+#pragma warning disable UAC0005
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
                 try
@@ -401,6 +402,7 @@ namespace Herghys.MultipleAdsManager.Editor
                 }
                 catch { }
             }
+#pragma warning restore UAC0005
 
             return null;
         }

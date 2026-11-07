@@ -96,7 +96,7 @@ namespace Herghys.MultipleAdsManager.Editor
             EditorGUILayout.LabelField($"Type: {cfg.NetworkType} | App Name: '{cfg.AppName}' | Package: '{cfg.AppStoreDetails}'", EditorStyles.miniLabel);
             if (cfg.UseTestAdIds)
             {
-                EditorGUILayout.LabelField("[Test Ad IDs Active]", EditorStyles.miniLabel);
+                EditorGUILayout.LabelField("[Test Ad IDs Active (Editor Only)]", EditorStyles.miniLabel);
             }
             EditorGUILayout.EndVertical();
 

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -71,11 +71,27 @@ namespace Herghys.MultipleAdsManager.Runtime
             set => AndroidAdId = value;
         }
 
-        public bool HasValidId => networkType == AdNetworkType.Mock || useTestAdId || !string.IsNullOrWhiteSpace(AndroidAdId) || !string.IsNullOrWhiteSpace(IosAdId);
+        public bool HasValidId
+        {
+            get
+            {
+#if UNITY_EDITOR
+                if (networkType == AdNetworkType.Mock || useTestAdId) return true;
+#else
+                if (networkType == AdNetworkType.Mock) return false;
+#endif
+                return !string.IsNullOrWhiteSpace(AndroidAdId) || !string.IsNullOrWhiteSpace(IosAdId);
+            }
+        }
 
         public bool HasValidIdForPlatform(bool isIos)
         {
-            return networkType == AdNetworkType.Mock || useTestAdId || (isIos ? !string.IsNullOrWhiteSpace(IosAdId) : !string.IsNullOrWhiteSpace(AndroidAdId));
+#if UNITY_EDITOR
+            if (networkType == AdNetworkType.Mock || useTestAdId) return true;
+#else
+            if (networkType == AdNetworkType.Mock) return false;
+#endif
+            return isIos ? !string.IsNullOrWhiteSpace(IosAdId) : !string.IsNullOrWhiteSpace(AndroidAdId);
         }
 
         public override string ToString()
@@ -174,40 +190,71 @@ namespace Herghys.MultipleAdsManager.Runtime
 
         public string GetAdIdForProvider(AdNetworkType network, BaseAdConfig providerConfig = null)
         {
+#if UNITY_EDITOR
             if (network == AdNetworkType.Mock)
             {
                 return GetDefaultMockId(adType);
             }
+#else
+            if (network == AdNetworkType.Mock)
+            {
+                return null;
+            }
+#endif
 
             if (providerAdIds == null) return null;
             var entry = providerAdIds.Find(p => p != null && p.NetworkType == network);
             if (entry == null) return null;
 
-            if (entry.UseTestAdId && providerConfig != null)
+#if UNITY_EDITOR
+            bool useTest = entry.UseTestAdId;
+            if (MultipleAdsConfig.ActiveConfig != null && !MultipleAdsConfig.ActiveConfig.UseTestAdsOnEditor)
             {
-                string testId = providerConfig.GetTestAdId(adType);
+                useTest = false;
+            }
+
+            if (useTest && providerConfig != null)
+            {
+                bool isIos = UnityEditor.EditorUserBuildSettings.activeBuildTarget == UnityEditor.BuildTarget.iOS;
+                string testId = providerConfig.GetTestAdId(adType, isIos);
                 if (!string.IsNullOrWhiteSpace(testId)) return testId;
             }
+#endif
 
             return entry.HasValidId ? entry.AdId : null;
         }
 
         public string GetAdIdForProvider(AdNetworkType network, bool isIos, BaseAdConfig providerConfig = null)
         {
+#if UNITY_EDITOR
             if (network == AdNetworkType.Mock)
             {
                 return GetDefaultMockId(adType);
             }
+#else
+            if (network == AdNetworkType.Mock)
+            {
+                return null;
+            }
+#endif
 
             if (providerAdIds == null) return null;
             var entry = providerAdIds.Find(p => p != null && p.NetworkType == network);
             if (entry == null) return null;
 
-            if (entry.UseTestAdId && providerConfig != null)
+#if UNITY_EDITOR
+            bool useTest = entry.UseTestAdId;
+            if (MultipleAdsConfig.ActiveConfig != null && !MultipleAdsConfig.ActiveConfig.UseTestAdsOnEditor)
+            {
+                useTest = false;
+            }
+
+            if (useTest && providerConfig != null)
             {
                 string testId = providerConfig.GetTestAdId(adType, isIos);
                 if (!string.IsNullOrWhiteSpace(testId)) return testId;
             }
+#endif
 
             string id = isIos ? entry.IosAdId : entry.AndroidAdId;
             return !string.IsNullOrWhiteSpace(id) ? id : null;

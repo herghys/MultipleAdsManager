@@ -28,6 +28,10 @@ namespace Herghys.MultipleAdsManager.Mock
 
         private void Awake()
         {
+#if !UNITY_EDITOR
+            Destroy(gameObject);
+            return;
+#else
             EnsureValidFonts();
 
             if (closeButton != null)
@@ -39,6 +43,7 @@ namespace Herghys.MultipleAdsManager.Mock
             {
                 claimButton.onClick.AddListener(OnClaimClicked);
             }
+#endif
         }
 
         private void EnsureValidFonts()
