@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using Herghys.MultipleAdsManager.Runtime;
@@ -43,7 +43,9 @@ namespace Herghys.MultipleAdsManager.Modules
         private InterstitialAd interstitialAd;
         private RewardedAd rewardedAd;
 
+        private Action onCurrentInterstitialOpened;
         private Action onCurrentInterstitialClosed;
+        private Action onCurrentRewardedOpened;
         private Action onCurrentRewardedClosed;
         private Action<AdReward> onCurrentRewardEarned;
 
@@ -242,16 +244,17 @@ namespace Herghys.MultipleAdsManager.Modules
 #endif
         }
 
-        public void ShowInterstitial(Action onClosed = null)
+        public void ShowInterstitial(Action onOpened = null, Action onClosed = null)
         {
-            ShowInterstitial(null, null, onClosed);
+            ShowInterstitial(null, null, onOpened, onClosed);
         }
 
-        public void ShowInterstitial(string adUnitId, string placement, Action onClosed = null)
+        public void ShowInterstitial(string adUnitId, string placement, Action onOpened = null, Action onClosed = null)
         {
 #if GOOGLE_ADS && GOOGLE_ADS_SDK_INSTALLED
             if (IsInterstitialReady)
             {
+                onCurrentInterstitialOpened = onOpened;
                 onCurrentInterstitialClosed = onClosed;
                 interstitialAd.Show();
             }
@@ -263,6 +266,7 @@ namespace Herghys.MultipleAdsManager.Modules
             }
 #else
             Debug.Log($"[GoogleAdsProvider-Stub] ShowInterstitial (ID: {adUnitId}, Placement: {placement})");
+            onOpened?.Invoke();
             onClosed?.Invoke();
 #endif
         }
@@ -274,6 +278,8 @@ namespace Herghys.MultipleAdsManager.Modules
             {
                 Debug.Log("[GoogleAdsProvider] Interstitial Opened.");
                 OnAdShown?.Invoke(IAdsType.Interstitial);
+                onCurrentInterstitialOpened?.Invoke();
+                onCurrentInterstitialOpened = null;
             };
 
             ad.OnAdFullScreenContentClosed += () =>
@@ -337,21 +343,22 @@ namespace Herghys.MultipleAdsManager.Modules
 #endif
         }
 
-        public void ShowRewarded(Action onRewardEarned, Action onClosed = null)
+        public void ShowRewarded(Action onRewardEarned, Action onOpened = null, Action onClosed = null)
         {
-            ShowRewarded(null, null, onRewardEarned, onClosed);
+            ShowRewarded(null, null, onRewardEarned, onOpened, onClosed);
         }
 
-        public void ShowRewarded(string adUnitId, string placement, Action onRewardEarned, Action onClosed = null)
+        public void ShowRewarded(string adUnitId, string placement, Action onRewardEarned, Action onOpened = null, Action onClosed = null)
         {
-            ShowRewarded(adUnitId, placement, (reward) => onRewardEarned?.Invoke(), onClosed);
+            ShowRewarded(adUnitId, placement, (reward) => onRewardEarned?.Invoke(), onOpened, onClosed);
         }
 
-        public void ShowRewarded(string adUnitId, string placement, Action<AdReward> onRewardEarned, Action onClosed = null)
+        public void ShowRewarded(string adUnitId, string placement, Action<AdReward> onRewardEarned, Action onOpened = null, Action onClosed = null)
         {
 #if GOOGLE_ADS && GOOGLE_ADS_SDK_INSTALLED
             if (IsRewardedReady)
             {
+                onCurrentRewardedOpened = onOpened;
                 onCurrentRewardedClosed = onClosed;
                 onCurrentRewardEarned = onRewardEarned;
 
@@ -372,6 +379,7 @@ namespace Herghys.MultipleAdsManager.Modules
             }
 #else
             Debug.Log($"[GoogleAdsProvider-Stub] ShowRewarded (ID: {adUnitId}, Placement: {placement})");
+            onOpened?.Invoke();
             onRewardEarned?.Invoke(new AdReward("StubReward", 1));
             onClosed?.Invoke();
 #endif
@@ -384,6 +392,8 @@ namespace Herghys.MultipleAdsManager.Modules
             {
                 Debug.Log("[GoogleAdsProvider] Rewarded ad opened.");
                 OnAdShown?.Invoke(IAdsType.Rewarded);
+                onCurrentRewardedOpened?.Invoke();
+                onCurrentRewardedOpened = null;
             };
 
             ad.OnAdFullScreenContentClosed += () =>

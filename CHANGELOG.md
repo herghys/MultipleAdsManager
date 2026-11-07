@@ -2,6 +2,13 @@
 
 All notable changes to this package will be documented in this file.
 
+## [1.0.4] - 2026-11-07
+### Added
+- **`onOpened` Callbacks**: Added `onOpened` callback parameter support across `IAdProvider`, `MultipleAdsManager.ShowInterstitial`, and `MultipleAdsManager.ShowRewarded`.
+- **`TEST_ADS` Scripting Define**: Enforced editor-only test ad IDs gated behind `#if UNITY_EDITOR && TEST_ADS`, ensuring test IDs are strictly prohibited in build artifacts.
+### Fixed
+- **Module Templates Sync**: Updated GoogleAds, LevelPlay, UnityAds, MockAds, AppLovin, and Vungle provider templates to implement the new `IAdProvider` signatures (`onOpened`).
+
 ## [1.0.2] - 2026-11-04
 ### Added
 - **Unity Ads Module Support**: Added `UnityAds` (`com.unity.ads`) module definition, `UnityAdsConfig` and `UnityAdsProvider` templates (`UNITY_ADS` & `UNITY_ADS_SDK_INSTALLED`), default format test ad IDs (`Banner_Android`/`Banner_iOS`, `Interstitial_Android`/`Interstitial_iOS`, `Rewarded_Android`/`Rewarded_iOS`), and ProGuard rules (`proguard-unityads.txt`).

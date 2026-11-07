@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using Herghys.MultipleAdsManager.Runtime;
@@ -98,15 +98,16 @@ namespace Herghys.MultipleAdsManager.Modules
             OnAdLoaded?.Invoke(IAdsType.Interstitial);
         }
 
-        public void ShowInterstitial(Action onClosed = null)
+        public void ShowInterstitial(Action onOpened = null, Action onClosed = null)
         {
-            ShowInterstitial(null, null, onClosed);
+            ShowInterstitial(null, null, onOpened, onClosed);
         }
 
-        public void ShowInterstitial(string adUnitId, string placement, Action onClosed = null)
+        public void ShowInterstitial(string adUnitId, string placement, Action onOpened = null, Action onClosed = null)
         {
             Debug.Log($"[VungleProvider] Showing Interstitial: {adUnitId} (Placement: {placement})");
             OnAdShown?.Invoke(IAdsType.Interstitial);
+            onOpened?.Invoke();
             OnAdClosed?.Invoke(IAdsType.Interstitial);
             onClosed?.Invoke();
         }
@@ -118,21 +119,22 @@ namespace Herghys.MultipleAdsManager.Modules
             OnAdLoaded?.Invoke(IAdsType.Rewarded);
         }
 
-        public void ShowRewarded(Action onRewardEarned, Action onClosed = null)
+        public void ShowRewarded(Action onRewardEarned, Action onOpened = null, Action onClosed = null)
         {
-            ShowRewarded(null, null, onRewardEarned, onClosed);
+            ShowRewarded(null, null, onRewardEarned, onOpened, onClosed);
         }
 
-        public void ShowRewarded(string adUnitId, string placement, Action onRewardEarned, Action onClosed = null)
+        public void ShowRewarded(string adUnitId, string placement, Action onRewardEarned, Action onOpened = null, Action onClosed = null)
         {
-            ShowRewarded(adUnitId, placement, (reward) => onRewardEarned?.Invoke(), onClosed);
+            ShowRewarded(adUnitId, placement, (reward) => onRewardEarned?.Invoke(), onOpened, onClosed);
         }
 
-        public void ShowRewarded(string adUnitId, string placement, Action<AdReward> onRewardEarned, Action onClosed = null)
+        public void ShowRewarded(string adUnitId, string placement, Action<AdReward> onRewardEarned, Action onOpened = null, Action onClosed = null)
         {
             var reward = new AdReward("Continue_Play", 1);
             Debug.Log($"[VungleProvider] Showing Rewarded: {adUnitId} (Placement: {placement})");
             OnAdShown?.Invoke(IAdsType.Rewarded);
+            onOpened?.Invoke();
             OnRewardEarned?.Invoke();
             OnRewardEarnedWithReward?.Invoke(reward);
             onRewardEarned?.Invoke(reward);

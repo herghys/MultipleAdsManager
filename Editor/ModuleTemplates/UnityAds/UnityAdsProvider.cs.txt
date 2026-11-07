@@ -46,7 +46,9 @@ namespace Herghys.MultipleAdsManager.Modules
 
 #if UNITY_ADS && UNITY_ADS_SDK_INSTALLED
         private Action<bool> onInitializationCallback;
+        private Action onCurrentInterstitialOpened;
         private Action onCurrentInterstitialClosed;
+        private Action onCurrentRewardedOpened;
         private Action onCurrentRewardedClosed;
         private Action<AdReward> onCurrentRewardEarned;
 
@@ -117,7 +119,17 @@ namespace Herghys.MultipleAdsManager.Modules
             }
 
             onInitializationCallback = onInitialized;
-            bool testMode = config != null && config.UseTestAdIds;
+            bool testMode = false;
+#if UNITY_EDITOR && TEST_ADS
+            if (MultipleAdsConfig.ActiveConfig != null)
+            {
+                testMode = MultipleAdsConfig.ActiveConfig.UseTestAdsOnEditor;
+            }
+            else
+            {
+                testMode = config != null && config.UseTestAdIds;
+            }
+#endif
             Advertisement.Initialize(gameId, testMode, this);
 #elif UNITY_ADS
             Debug.LogWarning("[UnityAdsProvider] UNITY_ADS is enabled, but Unity Ads SDK (com.unity.ads) is not yet detected/installed. Running in stub mode. Config remains active.");
@@ -234,17 +246,18 @@ namespace Herghys.MultipleAdsManager.Modules
 #endif
         }
 
-        public void ShowInterstitial(Action onClosed = null)
+        public void ShowInterstitial(Action onOpened = null, Action onClosed = null)
         {
-            ShowInterstitial(null, null, onClosed);
+            ShowInterstitial(null, null, onOpened, onClosed);
         }
 
-        public void ShowInterstitial(string adUnitId, string placement, Action onClosed = null)
+        public void ShowInterstitial(string adUnitId, string placement, Action onOpened = null, Action onClosed = null)
         {
 #if UNITY_ADS && UNITY_ADS_SDK_INSTALLED
             string unitToShow = !string.IsNullOrEmpty(adUnitId) ? adUnitId : lastInterstitialAdUnitId;
             if (IsInterstitialReady && !string.IsNullOrEmpty(unitToShow))
             {
+                onCurrentInterstitialOpened = onOpened;
                 onCurrentInterstitialClosed = onClosed;
                 isInterstitialReady = false;
                 Advertisement.Show(unitToShow, this);
@@ -256,6 +269,7 @@ namespace Herghys.MultipleAdsManager.Modules
             }
 #else
             Debug.Log($"[UnityAdsProvider-Stub] Showing Interstitial: {adUnitId} (Placement: {placement})");
+            onOpened?.Invoke();
             OnAdShown?.Invoke(IAdsType.Interstitial);
             OnAdClosed?.Invoke(IAdsType.Interstitial);
             onClosed?.Invoke();
@@ -277,22 +291,23 @@ namespace Herghys.MultipleAdsManager.Modules
 #endif
         }
 
-        public void ShowRewarded(Action onRewardEarned, Action onClosed = null)
+        public void ShowRewarded(Action onRewardEarned, Action onOpened = null, Action onClosed = null)
         {
-            ShowRewarded(null, null, onRewardEarned, onClosed);
+            ShowRewarded(null, null, onRewardEarned, onOpened, onClosed);
         }
 
-        public void ShowRewarded(string adUnitId, string placement, Action onRewardEarned, Action onClosed = null)
+        public void ShowRewarded(string adUnitId, string placement, Action onRewardEarned, Action onOpened = null, Action onClosed = null)
         {
-            ShowRewarded(adUnitId, placement, (reward) => onRewardEarned?.Invoke(), onClosed);
+            ShowRewarded(adUnitId, placement, (reward) => onRewardEarned?.Invoke(), onOpened, onClosed);
         }
 
-        public void ShowRewarded(string adUnitId, string placement, Action<AdReward> onRewardEarned, Action onClosed = null)
+        public void ShowRewarded(string adUnitId, string placement, Action<AdReward> onRewardEarned, Action onOpened = null, Action onClosed = null)
         {
 #if UNITY_ADS && UNITY_ADS_SDK_INSTALLED
             string unitToShow = !string.IsNullOrEmpty(adUnitId) ? adUnitId : lastRewardedAdUnitId;
             if (IsRewardedReady && !string.IsNullOrEmpty(unitToShow))
             {
+                onCurrentRewardedOpened = onOpened;
                 onCurrentRewardedClosed = onClosed;
                 onCurrentRewardEarned = onRewardEarned;
                 isRewardedReady = false;
@@ -306,6 +321,7 @@ namespace Herghys.MultipleAdsManager.Modules
 #else
             var reward = new AdReward("Reward", 1);
             Debug.Log($"[UnityAdsProvider-Stub] Showing Rewarded: {adUnitId} (Placement: {placement})");
+            onOpened?.Invoke();
             OnAdShown?.Invoke(IAdsType.Rewarded);
             OnRewardEarned?.Invoke();
             OnRewardEarnedWithReward?.Invoke(reward);
@@ -352,10 +368,14 @@ namespace Herghys.MultipleAdsManager.Modules
             if (!string.IsNullOrEmpty(lastInterstitialAdUnitId) && string.Equals(placementId, lastInterstitialAdUnitId, StringComparison.Ordinal))
             {
                 OnAdShown?.Invoke(IAdsType.Interstitial);
+                onCurrentInterstitialOpened?.Invoke();
+                onCurrentInterstitialOpened = null;
             }
             else if (!string.IsNullOrEmpty(lastRewardedAdUnitId) && string.Equals(placementId, lastRewardedAdUnitId, StringComparison.Ordinal))
             {
                 OnAdShown?.Invoke(IAdsType.Rewarded);
+                onCurrentRewardedOpened?.Invoke();
+                onCurrentRewardedOpened = null;
             }
         }
 
