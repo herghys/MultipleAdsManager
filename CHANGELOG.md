@@ -2,19 +2,25 @@
 
 All notable changes to this package will be documented in this file.
 
-## [1.0.4] - 2026-11-07
+## [1.0.3] - 2026-11-07
 ### Added
-- **`onOpened` Callbacks**: Added `onOpened` callback parameter support across `IAdProvider`, `MultipleAdsManager.ShowInterstitial`, and `MultipleAdsManager.ShowRewarded`.
-- **`TEST_ADS` Scripting Define**: Enforced editor-only test ad IDs gated behind `#if UNITY_EDITOR && TEST_ADS`, ensuring test IDs are strictly prohibited in build artifacts.
+- **Ad Open Callback Overloads**: Added dedicated `onOpened` action callback overloads across `IAdProvider`, `MultipleAdsManager`, and all provider implementations/templates (`GoogleAds`, `LevelPlay`, `UnityAds`, `AppLovin`, `Vungle`, `MockAds`):
+  - `ShowInterstitial(Action onOpened, Action onClosed)`
+  - `ShowInterstitial(string adUnitId, string placement, Action onOpened, Action onClosed)`
+  - `ShowRewarded(Action onRewardEarned, Action onOpened, Action onClosed)`
+  - `ShowRewarded(string adUnitId, string placement, Action onRewardEarned, Action onOpened, Action onClosed)`
+  - `ShowRewarded(string adUnitId, string placement, Action<AdReward> onRewardEarned, Action onOpened, Action onClosed)`
+- **Backwards Compatibility**: Preserved all original single-callback and parameterless overloads (`ShowInterstitial(Action onClosed = null)`, `ShowInterstitial(string adUnitId, string placement, Action onClosed = null)`, `ShowRewarded(Action onRewardEarned, Action onClosed = null)`, etc.) so existing code without `onOpened` remains fully supported without breaking changes.
+
 ### Fixed
-- **Module Templates Sync**: Updated GoogleAds, LevelPlay, UnityAds, MockAds, AppLovin, and Vungle provider templates to implement the new `IAdProvider` signatures (`onOpened`).
+- Fixed compilation error `CS0535` across all ad providers and module templates by properly implementing both legacy and `onOpened` overloads for `IAdProvider`.
 
 ## [1.0.2] - 2026-11-04
 ### Added
 - **Unity Ads Module Support**: Added `UnityAds` (`com.unity.ads`) module definition, `UnityAdsConfig` and `UnityAdsProvider` templates (`UNITY_ADS` & `UNITY_ADS_SDK_INSTALLED`), default format test ad IDs (`Banner_Android`/`Banner_iOS`, `Interstitial_Android`/`Interstitial_iOS`, `Rewarded_Android`/`Rewarded_iOS`), and ProGuard rules (`proguard-unityads.txt`).
 - **Android Optimization for Unity Ads**: Added `EnableProguardUnityAds` toggle and `UNITY_ADS` adapter/standalone SDK status in `MultipleAdsOptimizationWindow` and `MultipleAdsAndroidOptimizer`.
 ### Fixed
-- **Enforce Event Systems for mock disabled
+- Enforce Event Systems for mock disabled.
 
 ## [1.0.1] - 2026-11-02
 ### Added

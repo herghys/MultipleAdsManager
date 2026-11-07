@@ -140,12 +140,22 @@ namespace Herghys.MultipleAdsManager.Mock
             OnAdLoaded?.Invoke(IAdsType.Interstitial);
         }
 
-        public void ShowInterstitial(Action onOpened = null, Action onClosed = null)
+        public void ShowInterstitial(Action onClosed = null)
+        {
+            ShowInterstitial(null, null, null, onClosed);
+        }
+
+        public void ShowInterstitial(Action onOpened, Action onClosed)
         {
             ShowInterstitial(null, null, onOpened, onClosed);
         }
 
-        public void ShowInterstitial(string adUnitId, string placement, Action onOpened = null, Action onClosed = null)
+        public void ShowInterstitial(string adUnitId, string placement, Action onClosed = null)
+        {
+            ShowInterstitial(adUnitId, placement, null, onClosed);
+        }
+
+        public void ShowInterstitial(string adUnitId, string placement, Action onOpened, Action onClosed)
         {
 #if !UNITY_EDITOR
             onClosed?.Invoke();
@@ -184,17 +194,32 @@ namespace Herghys.MultipleAdsManager.Mock
             OnAdLoaded?.Invoke(IAdsType.Rewarded);
         }
 
-        public void ShowRewarded(Action onRewardEarned, Action onOpened = null, Action onClosed = null)
+        public void ShowRewarded(Action onRewardEarned, Action onClosed = null)
         {
-            ShowRewarded(null, null, onRewardEarned, onOpened, onClosed);
+            ShowRewarded(null, null, (reward) => onRewardEarned?.Invoke(), null, onClosed);
         }
 
-        public void ShowRewarded(string adUnitId, string placement, Action onRewardEarned, Action onOpened = null, Action onClosed = null)
+        public void ShowRewarded(Action onRewardEarned, Action onOpened, Action onClosed)
+        {
+            ShowRewarded(null, null, (reward) => onRewardEarned?.Invoke(), onOpened, onClosed);
+        }
+
+        public void ShowRewarded(string adUnitId, string placement, Action onRewardEarned, Action onClosed = null)
+        {
+            ShowRewarded(adUnitId, placement, (reward) => onRewardEarned?.Invoke(), null, onClosed);
+        }
+
+        public void ShowRewarded(string adUnitId, string placement, Action onRewardEarned, Action onOpened, Action onClosed)
         {
             ShowRewarded(adUnitId, placement, (reward) => onRewardEarned?.Invoke(), onOpened, onClosed);
         }
 
-        public void ShowRewarded(string adUnitId, string placement, Action<AdReward> onRewardEarned, Action onOpened = null, Action onClosed = null)
+        public void ShowRewarded(string adUnitId, string placement, Action<AdReward> onRewardEarned, Action onClosed = null)
+        {
+            ShowRewarded(adUnitId, placement, onRewardEarned, null, onClosed);
+        }
+
+        public void ShowRewarded(string adUnitId, string placement, Action<AdReward> onRewardEarned, Action onOpened, Action onClosed)
         {
 #if !UNITY_EDITOR
             onClosed?.Invoke();

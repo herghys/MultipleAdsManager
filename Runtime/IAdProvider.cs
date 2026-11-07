@@ -18,14 +18,19 @@ namespace Herghys.MultipleAdsManager.Runtime
 
         bool IsInterstitialReady { get; }
         void LoadInterstitial(string adUnitId = null, string placement = null);
-        void ShowInterstitial(Action onOpened = null, Action onClosed = null);
-        void ShowInterstitial(string adUnitId, string placement, Action onOpened = null, Action onClosed = null);
+        void ShowInterstitial(Action onClosed = null);
+        void ShowInterstitial(Action onOpened, Action onClosed);
+        void ShowInterstitial(string adUnitId, string placement, Action onClosed = null);
+        void ShowInterstitial(string adUnitId, string placement, Action onOpened, Action onClosed);
 
         bool IsRewardedReady { get; }
         void LoadRewarded(string adUnitId = null, string placement = null);
-        void ShowRewarded(Action onRewardEarned, Action onOpened = null, Action onClosed = null);
-        void ShowRewarded(string adUnitId, string placement, Action onRewardEarned, Action onOpened = null, Action onClosed = null);
-        void ShowRewarded(string adUnitId, string placement, Action<AdReward> onRewardEarned, Action onOpened = null, Action onClosed = null);
+        void ShowRewarded(Action onRewardEarned, Action onClosed = null);
+        void ShowRewarded(Action onRewardEarned, Action onOpened, Action onClosed);
+        void ShowRewarded(string adUnitId, string placement, Action onRewardEarned, Action onClosed = null);
+        void ShowRewarded(string adUnitId, string placement, Action onRewardEarned, Action onOpened, Action onClosed);
+        void ShowRewarded(string adUnitId, string placement, Action<AdReward> onRewardEarned, Action onClosed = null);
+        void ShowRewarded(string adUnitId, string placement, Action<AdReward> onRewardEarned, Action onOpened, Action onClosed);
 
         event Action<IAdsType> OnAdLoaded;
         event Action<IAdsType, string> OnAdFailedToLoad;

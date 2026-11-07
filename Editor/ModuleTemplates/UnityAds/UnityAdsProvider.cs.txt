@@ -246,12 +246,22 @@ namespace Herghys.MultipleAdsManager.Modules
 #endif
         }
 
-        public void ShowInterstitial(Action onOpened = null, Action onClosed = null)
+        public void ShowInterstitial(Action onClosed = null)
+        {
+            ShowInterstitial(null, null, null, onClosed);
+        }
+
+        public void ShowInterstitial(Action onOpened, Action onClosed)
         {
             ShowInterstitial(null, null, onOpened, onClosed);
         }
 
-        public void ShowInterstitial(string adUnitId, string placement, Action onOpened = null, Action onClosed = null)
+        public void ShowInterstitial(string adUnitId, string placement, Action onClosed = null)
+        {
+            ShowInterstitial(adUnitId, placement, null, onClosed);
+        }
+
+        public void ShowInterstitial(string adUnitId, string placement, Action onOpened, Action onClosed)
         {
 #if UNITY_ADS && UNITY_ADS_SDK_INSTALLED
             string unitToShow = !string.IsNullOrEmpty(adUnitId) ? adUnitId : lastInterstitialAdUnitId;
@@ -291,17 +301,32 @@ namespace Herghys.MultipleAdsManager.Modules
 #endif
         }
 
-        public void ShowRewarded(Action onRewardEarned, Action onOpened = null, Action onClosed = null)
+        public void ShowRewarded(Action onRewardEarned, Action onClosed = null)
         {
-            ShowRewarded(null, null, onRewardEarned, onOpened, onClosed);
+            ShowRewarded(null, null, (reward) => onRewardEarned?.Invoke(), null, onClosed);
         }
 
-        public void ShowRewarded(string adUnitId, string placement, Action onRewardEarned, Action onOpened = null, Action onClosed = null)
+        public void ShowRewarded(Action onRewardEarned, Action onOpened, Action onClosed)
+        {
+            ShowRewarded(null, null, (reward) => onRewardEarned?.Invoke(), onOpened, onClosed);
+        }
+
+        public void ShowRewarded(string adUnitId, string placement, Action onRewardEarned, Action onClosed = null)
+        {
+            ShowRewarded(adUnitId, placement, (reward) => onRewardEarned?.Invoke(), null, onClosed);
+        }
+
+        public void ShowRewarded(string adUnitId, string placement, Action onRewardEarned, Action onOpened, Action onClosed)
         {
             ShowRewarded(adUnitId, placement, (reward) => onRewardEarned?.Invoke(), onOpened, onClosed);
         }
 
-        public void ShowRewarded(string adUnitId, string placement, Action<AdReward> onRewardEarned, Action onOpened = null, Action onClosed = null)
+        public void ShowRewarded(string adUnitId, string placement, Action<AdReward> onRewardEarned, Action onClosed = null)
+        {
+            ShowRewarded(adUnitId, placement, onRewardEarned, null, onClosed);
+        }
+
+        public void ShowRewarded(string adUnitId, string placement, Action<AdReward> onRewardEarned, Action onOpened, Action onClosed)
         {
 #if UNITY_ADS && UNITY_ADS_SDK_INSTALLED
             string unitToShow = !string.IsNullOrEmpty(adUnitId) ? adUnitId : lastRewardedAdUnitId;
@@ -386,11 +411,13 @@ namespace Herghys.MultipleAdsManager.Modules
             Debug.LogWarning($"[UnityAdsProvider] Failed to show '{placementId}': {error} - {message}");
             if (!string.IsNullOrEmpty(lastInterstitialAdUnitId) && string.Equals(placementId, lastInterstitialAdUnitId, StringComparison.Ordinal))
             {
+                onCurrentInterstitialOpened = null;
                 onCurrentInterstitialClosed?.Invoke();
                 onCurrentInterstitialClosed = null;
             }
             else if (!string.IsNullOrEmpty(lastRewardedAdUnitId) && string.Equals(placementId, lastRewardedAdUnitId, StringComparison.Ordinal))
             {
+                onCurrentRewardedOpened = null;
                 onCurrentRewardedClosed?.Invoke();
                 onCurrentRewardedClosed = null;
                 onCurrentRewardEarned = null;

@@ -232,12 +232,22 @@ namespace Herghys.MultipleAdsManager.Modules
 #endif
         }
 
-        public void ShowInterstitial(Action onOpened = null, Action onClosed = null)
+        public void ShowInterstitial(Action onClosed = null)
+        {
+            ShowInterstitial(null, null, null, onClosed);
+        }
+
+        public void ShowInterstitial(Action onOpened, Action onClosed)
         {
             ShowInterstitial(null, null, onOpened, onClosed);
         }
 
-        public void ShowInterstitial(string adUnitId, string placement, Action onOpened = null, Action onClosed = null)
+        public void ShowInterstitial(string adUnitId, string placement, Action onClosed = null)
+        {
+            ShowInterstitial(adUnitId, placement, null, onClosed);
+        }
+
+        public void ShowInterstitial(string adUnitId, string placement, Action onOpened, Action onClosed)
         {
 #if LEVELPLAY_ADS && LEVELPLAY_SDK_INSTALLED
             if (IsInterstitialReady)
@@ -297,6 +307,7 @@ namespace Herghys.MultipleAdsManager.Modules
             ad.OnAdDisplayFailed += (info, error) =>
             {
                 Debug.LogWarning($"[LevelPlayProvider] Interstitial Display Failed: {error.ErrorMessage}");
+                onCurrentInterstitialOpened = null;
                 onCurrentInterstitialClosed?.Invoke();
                 onCurrentInterstitialClosed = null;
             };
@@ -327,17 +338,32 @@ namespace Herghys.MultipleAdsManager.Modules
 #endif
         }
 
-        public void ShowRewarded(Action onRewardEarned, Action onOpened = null, Action onClosed = null)
+        public void ShowRewarded(Action onRewardEarned, Action onClosed = null)
         {
-            ShowRewarded(null, null, onRewardEarned, onOpened, onClosed);
+            ShowRewarded(null, null, (reward) => onRewardEarned?.Invoke(), null, onClosed);
         }
 
-        public void ShowRewarded(string adUnitId, string placement, Action onRewardEarned, Action onOpened = null, Action onClosed = null)
+        public void ShowRewarded(Action onRewardEarned, Action onOpened, Action onClosed)
+        {
+            ShowRewarded(null, null, (reward) => onRewardEarned?.Invoke(), onOpened, onClosed);
+        }
+
+        public void ShowRewarded(string adUnitId, string placement, Action onRewardEarned, Action onClosed = null)
+        {
+            ShowRewarded(adUnitId, placement, (reward) => onRewardEarned?.Invoke(), null, onClosed);
+        }
+
+        public void ShowRewarded(string adUnitId, string placement, Action onRewardEarned, Action onOpened, Action onClosed)
         {
             ShowRewarded(adUnitId, placement, (reward) => onRewardEarned?.Invoke(), onOpened, onClosed);
         }
 
-        public void ShowRewarded(string adUnitId, string placement, Action<AdReward> onRewardEarned, Action onOpened = null, Action onClosed = null)
+        public void ShowRewarded(string adUnitId, string placement, Action<AdReward> onRewardEarned, Action onClosed = null)
+        {
+            ShowRewarded(adUnitId, placement, onRewardEarned, null, onClosed);
+        }
+
+        public void ShowRewarded(string adUnitId, string placement, Action<AdReward> onRewardEarned, Action onOpened, Action onClosed)
         {
 #if LEVELPLAY_ADS && LEVELPLAY_SDK_INSTALLED
             if (IsRewardedReady)
@@ -408,6 +434,7 @@ namespace Herghys.MultipleAdsManager.Modules
             ad.OnAdDisplayFailed += (info, error) =>
             {
                 Debug.LogWarning($"[LevelPlayProvider] Rewarded Ad Display Failed: {error.ErrorMessage}");
+                onCurrentRewardedOpened = null;
                 onCurrentRewardedClosed?.Invoke();
                 onCurrentRewardedClosed = null;
             };
