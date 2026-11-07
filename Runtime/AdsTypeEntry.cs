@@ -75,8 +75,10 @@ namespace Herghys.MultipleAdsManager.Runtime
         {
             get
             {
-#if UNITY_EDITOR
+#if UNITY_EDITOR && TEST_ADS
                 if (networkType == AdNetworkType.Mock || useTestAdId) return true;
+#elif UNITY_EDITOR
+                if (networkType == AdNetworkType.Mock) return true;
 #else
                 if (networkType == AdNetworkType.Mock) return false;
 #endif
@@ -86,8 +88,10 @@ namespace Herghys.MultipleAdsManager.Runtime
 
         public bool HasValidIdForPlatform(bool isIos)
         {
-#if UNITY_EDITOR
+#if UNITY_EDITOR && TEST_ADS
             if (networkType == AdNetworkType.Mock || useTestAdId) return true;
+#elif UNITY_EDITOR
+            if (networkType == AdNetworkType.Mock) return true;
 #else
             if (networkType == AdNetworkType.Mock) return false;
 #endif
@@ -206,7 +210,7 @@ namespace Herghys.MultipleAdsManager.Runtime
             var entry = providerAdIds.Find(p => p != null && p.NetworkType == network);
             if (entry == null) return null;
 
-#if UNITY_EDITOR
+#if UNITY_EDITOR && TEST_ADS
             bool useTest = entry.UseTestAdId;
             if (MultipleAdsConfig.ActiveConfig != null && !MultipleAdsConfig.ActiveConfig.UseTestAdsOnEditor)
             {
@@ -242,7 +246,7 @@ namespace Herghys.MultipleAdsManager.Runtime
             var entry = providerAdIds.Find(p => p != null && p.NetworkType == network);
             if (entry == null) return null;
 
-#if UNITY_EDITOR
+#if UNITY_EDITOR && TEST_ADS
             bool useTest = entry.UseTestAdId;
             if (MultipleAdsConfig.ActiveConfig != null && !MultipleAdsConfig.ActiveConfig.UseTestAdsOnEditor)
             {

@@ -111,7 +111,7 @@ namespace Herghys.MultipleAdsManager.Runtime
         {
             get
             {
-#if UNITY_EDITOR
+#if UNITY_EDITOR && TEST_ADS
                 return useTestAdsOnEditor;
 #else
                 return false;
@@ -122,7 +122,19 @@ namespace Herghys.MultipleAdsManager.Runtime
         public List<string> TestDeviceIds => testDeviceIds;
         public bool TargetAdsForChildren { get => targetAdsForChildren; set => targetAdsForChildren = value; }
         public bool EnableMockInEditor { get => enableMockInEditor; set => enableMockInEditor = value; }
-        public bool UseTestAdsOnEditor { get => useTestAdsOnEditor; set => useTestAdsOnEditor = value; }
+        public bool UseTestAdsOnEditor
+        {
+            get
+            {
+#if UNITY_EDITOR && TEST_ADS
+                return useTestAdsOnEditor;
+#else
+                return false;
+#endif
+            }
+            set => useTestAdsOnEditor = value;
+        }
+        public bool RawUseTestAdsOnEditor { get => useTestAdsOnEditor; set => useTestAdsOnEditor = value; }
 
         public bool StripFineLocation { get => stripFineLocation; set => stripFineLocation = value; }
         public bool StripCoarseLocation { get => stripCoarseLocation; set => stripCoarseLocation = value; }

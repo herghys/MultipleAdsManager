@@ -49,7 +49,7 @@ namespace Herghys.MultipleAdsManager.Runtime
         {
             get
             {
-#if UNITY_EDITOR
+#if UNITY_EDITOR && TEST_ADS
                 return useTestAdIds;
 #else
                 return false;
@@ -61,7 +61,7 @@ namespace Herghys.MultipleAdsManager.Runtime
 
         public virtual bool IsTestAdIdActive(IAdsType type)
         {
-#if UNITY_EDITOR
+#if UNITY_EDITOR && TEST_ADS
             if (testAdIds == null) return false;
             var entry = testAdIds.Find(t => t != null && t.AdType == type);
             return entry != null && entry.Enabled && entry.HasValidTestId;
@@ -72,7 +72,7 @@ namespace Herghys.MultipleAdsManager.Runtime
 
         public virtual string GetTestAdId(IAdsType type)
         {
-#if UNITY_EDITOR
+#if UNITY_EDITOR && TEST_ADS
             if (testAdIds == null) return null;
             var entry = testAdIds.Find(t => t != null && t.AdType == type);
             if (entry != null && entry.Enabled && !string.IsNullOrWhiteSpace(entry.TestAdId))
@@ -87,7 +87,7 @@ namespace Herghys.MultipleAdsManager.Runtime
 
         public string GetTestAdId(IAdsType type, bool isIos)
         {
-#if UNITY_EDITOR
+#if UNITY_EDITOR && TEST_ADS
             if (testAdIds == null) return null;
             var entry = testAdIds.Find(t => t != null && t.AdType == type);
             if (entry != null && entry.Enabled)

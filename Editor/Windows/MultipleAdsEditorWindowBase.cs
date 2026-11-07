@@ -442,10 +442,20 @@ namespace Herghys.MultipleAdsManager.Editor
                         }
                         else
                         {
+                            bool isTestAdsActive = MultipleAdsBuildTargetCompat.HasDefine(BuildTargetGroup.Unknown, MultipleAdsBuildTargetCompat.TestAdsDefine);
                             bool useTest = pEntry != null && pEntry.UseTestAdId;
-                            statusBadge = useTest
-                                ? " [Using Test Ad ID]"
-                                : (pEntry != null && pEntry.HasValidId ? " [Configured]" : " [Not Set]");
+                            if (useTest && isTestAdsActive)
+                            {
+                                statusBadge = " [Using Test Ad ID]";
+                            }
+                            else if (useTest && !isTestAdsActive)
+                            {
+                                statusBadge = pEntry != null && pEntry.HasValidId ? " [Configured (Real ID)]" : " [Real ID Needed]";
+                            }
+                            else
+                            {
+                                statusBadge = pEntry != null && pEntry.HasValidId ? " [Configured]" : " [Not Set]";
+                            }
                         }
 
                         EditorGUILayout.BeginVertical(EditorStyles.helpBox);
@@ -479,9 +489,10 @@ namespace Herghys.MultipleAdsManager.Editor
                             else
                             {
                                 EditorGUI.BeginChangeCheck();
+                                bool isTestAdsActive = MultipleAdsBuildTargetCompat.HasDefine(BuildTargetGroup.Unknown, MultipleAdsBuildTargetCompat.TestAdsDefine);
                                 bool curUseTest = pEntry != null && pEntry.UseTestAdId;
                                 bool newUseTest = EditorGUILayout.ToggleLeft(
-                                    new GUIContent("Use Test Ad ID (Editor Only)", $"When enabled, uses the official {entry.AdType} test ad unit ID from {net} config in Unity Editor (#UNITY_EDITOR) instead of the real ad ID. Real production IDs are still used in runtime player builds."),
+                                    new GUIContent("Use Test Ad ID (Editor Only)", $"When enabled and #TEST_ADS is active, uses the official {entry.AdType} test ad unit ID from {net} config in Unity Editor (#UNITY_EDITOR). If #TEST_ADS is disabled, real production IDs are used even in the Editor."),
                                     curUseTest
                                 );
                                 if (EditorGUI.EndChangeCheck())
@@ -491,6 +502,11 @@ namespace Herghys.MultipleAdsManager.Editor
                                     string existingIos = pEntry != null ? pEntry.IosAdId : "";
                                     entry.SetProviderEntry(net, existingAndroid, existingIos, newUseTest);
                                     EditorUtility.SetDirty(config);
+                                }
+
+                                if (newUseTest && !isTestAdsActive)
+                                {
+                                    EditorGUILayout.HelpBox("Note: 'Use Test Ads On Editor' (#TEST_ADS) is currently disabled in Global Settings. Even though this ad is marked for test ads, real production IDs will be used in the Editor until #TEST_ADS is enabled.", MessageType.Info);
                                 }
 
                                 if (newUseTest)

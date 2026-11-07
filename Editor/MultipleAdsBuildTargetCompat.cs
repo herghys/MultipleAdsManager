@@ -84,6 +84,45 @@ namespace Herghys.MultipleAdsManager.Editor
             return false;
         }
 
+        public const string TestAdsDefine = "TEST_ADS";
+
+        public static bool IsTestAdsDefineActive()
+        {
+            return HasDefine(SelectedBuildTargetGroup, TestAdsDefine);
+        }
+
+        public static bool SetTestAdsDefine(bool enable)
+        {
+            var targetGroups = new[]
+            {
+                SelectedBuildTargetGroup,
+                BuildTargetGroup.Android,
+                BuildTargetGroup.iOS,
+                BuildTargetGroup.Standalone
+            }.Distinct();
+
+            bool anyChanged = false;
+            foreach (var group in targetGroups)
+            {
+                if (group == BuildTargetGroup.Unknown) continue;
+                var list = GetDefinesList(group);
+                bool has = list.Contains(TestAdsDefine);
+                if (enable && !has)
+                {
+                    list.Add(TestAdsDefine);
+                    SetScriptingDefineSymbols(group, list);
+                    anyChanged = true;
+                }
+                else if (!enable && has)
+                {
+                    list.Remove(TestAdsDefine);
+                    SetScriptingDefineSymbols(group, list);
+                    anyChanged = true;
+                }
+            }
+            return anyChanged;
+        }
+
         public static string GetApplicationIdentifier(BuildTargetGroup targetGroup)
         {
             if (targetGroup == BuildTargetGroup.Unknown)

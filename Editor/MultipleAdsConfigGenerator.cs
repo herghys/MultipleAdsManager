@@ -403,6 +403,21 @@ namespace Herghys.MultipleAdsManager.Editor
                     }
                 }
 
+                if (config != null)
+                {
+                    bool hasTestAdsDefine = defineList.Contains(MultipleAdsBuildTargetCompat.TestAdsDefine);
+                    if (config.RawUseTestAdsOnEditor && !hasTestAdsDefine)
+                    {
+                        defineList.Add(MultipleAdsBuildTargetCompat.TestAdsDefine);
+                        definesChanged = true;
+                    }
+                    else if (!config.RawUseTestAdsOnEditor && hasTestAdsDefine)
+                    {
+                        defineList.Remove(MultipleAdsBuildTargetCompat.TestAdsDefine);
+                        definesChanged = true;
+                    }
+                }
+
                 if (definesChanged)
                 {
                     MultipleAdsBuildTargetCompat.SetScriptingDefineSymbols(target, defineList);

@@ -1,4 +1,4 @@
-﻿using UnityEditor;
+using UnityEditor;
 using UnityEngine;
 using Herghys.MultipleAdsManager.Runtime;
 
@@ -20,7 +20,16 @@ namespace Herghys.MultipleAdsManager.Editor
             );
             EditorGUILayout.Space();
 
+            EditorGUI.BeginChangeCheck();
             DrawDefaultInspector();
+            if (EditorGUI.EndChangeCheck())
+            {
+                var cfg = (MultipleAdsConfig)target;
+                if (cfg != null)
+                {
+                    MultipleAdsBuildTargetCompat.SetTestAdsDefine(cfg.RawUseTestAdsOnEditor);
+                }
+            }
 
             serializedObject.ApplyModifiedProperties();
 
