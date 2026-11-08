@@ -198,6 +198,15 @@ namespace Herghys.MultipleAdsManager.Editor
                 return true;
             }
 
+            if (IsModuleScriptOutdated(def, targetDir))
+            {
+                if (PatchModule(def, targetDir))
+                {
+                    Debug.Log($"[MultipleAdsModuleManager] Auto-patched outdated module '{def.DisplayName}' files to match package version {MultipleAdsUpdateManager.CurrentVersion}.");
+                    return true;
+                }
+            }
+
             return false;
         }
 
@@ -370,6 +379,163 @@ namespace Herghys.MultipleAdsManager.Editor
             {
                 File.Copy(providerTemplate, dstProvider, true);
             }
+        }
+
+        private const string PrefInstalledModulesVersion = "MultipleAds_InstalledModulesVersion";
+        public static string ModulesVersionFilePath => Path.Combine(MultipleAdsPaths.GetModulesDirectory(), ".version").Replace('\\', '/');
+
+        public static string GetInstalledModulesVersion()
+        {
+            if (File.Exists(ModulesVersionFilePath))
+            {
+                try
+                {
+                    string ver = File.ReadAllText(ModulesVersionFilePath).Trim();
+                    if (!string.IsNullOrEmpty(ver)) return ver;
+                }
+                catch { }
+            }
+            return EditorPrefs.GetString(PrefInstalledModulesVersion, "");
+        }
+
+        public static void SetInstalledModulesVersion(string version)
+        {
+            EditorPrefs.SetString(PrefInstalledModulesVersion, version ?? "");
+            try
+            {
+                string dir = MultipleAdsPaths.GetModulesDirectory();
+                if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+                File.WriteAllText(ModulesVersionFilePath, version ?? "");
+            }
+            catch { }
+        }
+
+        public static bool IsModuleScriptOutdated(AdsModuleDefinition def, string targetDir)
+        {
+            if (def == null || def.IsDefault) return false;
+
+            string dstProvider = Path.Combine(targetDir, def.ProviderFileName).Replace('\\', '/');
+            if (!File.Exists(dstProvider)) return false;
+
+            // 1. Check interface method signatures (e.g. onOpened overloads introduced in 1.0.4)
+            string providerCode = File.ReadAllText(dstProvider);
+            if (!providerCode.Contains("onOpened") || !providerCode.Contains("Action onOpened"))
+            {
+                return true;
+            }
+
+            // 2. Check package version comparison
+            string currentPkgVersion = MultipleAdsUpdateManager.CurrentVersion;
+            string recordedVersion = GetInstalledModulesVersion();
+            if (!string.IsNullOrEmpty(recordedVersion) && MultipleAdsUpdateManager.CompareVersions(currentPkgVersion, recordedVersion) > 0)
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        public static bool PatchModule(AdsModuleDefinition def, string targetDir, bool createBackup = true)
+        {
+            if (def == null || def.IsDefault) return false;
+
+            string templateDir = $"Packages/com.herghys.multipleadsmanager/Editor/ModuleTemplates/{def.Id}";
+            if (!Directory.Exists(templateDir))
+            {
+                string fallbackDir = $"Assets/Plugins/Herghys/MultipleAds/Editor/ModuleTemplates/{def.Id}";
+                if (Directory.Exists(fallbackDir))
+                    templateDir = fallbackDir;
+            }
+
+            string providerTemplate = Path.Combine(templateDir, $"{def.ProviderFileName}.txt").Replace('\\', '/');
+            string configTemplate = Path.Combine(templateDir, $"{def.ConfigFileName}.txt").Replace('\\', '/');
+
+            string dstProvider = Path.Combine(targetDir, def.ProviderFileName).Replace('\\', '/');
+            string dstConfig = Path.Combine(targetDir, def.ConfigFileName).Replace('\\', '/');
+
+            bool patched = false;
+
+            if (File.Exists(providerTemplate))
+            {
+                string newProviderCode = File.ReadAllText(providerTemplate);
+                string oldProviderCode = File.Exists(dstProvider) ? File.ReadAllText(dstProvider) : "";
+
+                if (oldProviderCode != newProviderCode)
+                {
+                    if (createBackup && File.Exists(dstProvider))
+                    {
+                        try
+                        {
+                            File.Copy(dstProvider, dstProvider + ".bak", true);
+                        }
+                        catch { }
+                    }
+
+                    File.WriteAllText(dstProvider, newProviderCode);
+                    patched = true;
+                }
+            }
+
+            if (File.Exists(configTemplate))
+            {
+                string newConfigCode = File.ReadAllText(configTemplate);
+                string oldConfigCode = File.Exists(dstConfig) ? File.ReadAllText(dstConfig) : "";
+
+                if (oldConfigCode != newConfigCode)
+                {
+                    if (createBackup && File.Exists(dstConfig))
+                    {
+                        try
+                        {
+                            File.Copy(dstConfig, dstConfig + ".bak", true);
+                        }
+                        catch { }
+                    }
+
+                    File.WriteAllText(dstConfig, newConfigCode);
+                    patched = true;
+                }
+            }
+
+            return patched;
+        }
+
+        public static int CheckAndPatchInstalledModules(bool force = false, bool verbose = true)
+        {
+            int patchedCount = 0;
+            string currentPkgVersion = MultipleAdsUpdateManager.CurrentVersion;
+
+            foreach (var module in AllModules)
+            {
+                if (module == null || module.IsDefault) continue;
+
+                string targetDir = MultipleAdsPaths.GetModuleDirectory(module.Id);
+                if (!Directory.Exists(targetDir)) continue;
+
+                string dstProvider = Path.Combine(targetDir, module.ProviderFileName).Replace('\\', '/');
+                if (!File.Exists(dstProvider)) continue;
+
+                bool needsPatch = force || IsModuleScriptOutdated(module, targetDir);
+                if (needsPatch)
+                {
+                    if (PatchModule(module, targetDir))
+                    {
+                        patchedCount++;
+                        if (verbose)
+                        {
+                            Debug.Log($"[MultipleAdsModuleManager] Patched module '{module.DisplayName}' scripts to match package version {currentPkgVersion}.");
+                        }
+                    }
+                }
+            }
+
+            if (patchedCount > 0 || force)
+            {
+                SetInstalledModulesVersion(currentPkgVersion);
+                AssetDatabase.Refresh();
+            }
+
+            return patchedCount;
         }
 
         private static void DownloadFromRemote(AdsModuleDefinition def, string targetDir, Action<bool> onComplete)

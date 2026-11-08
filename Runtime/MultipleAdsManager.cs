@@ -561,6 +561,11 @@ namespace Herghys.MultipleAdsManager
             ShowRewarded(null, onRewardEarned, onOpened, onClosed);
         }
 
+        public void ShowRewarded(string placement, Action<AdReward> onRewardEarned)
+        {
+            ShowRewarded(placement, onRewardEarned, null, null);
+        }
+
         public void ShowRewarded(string placement, Action<AdReward> onRewardEarned, Action onClosed)
         {
             ShowRewarded(placement, onRewardEarned, null, onClosed);

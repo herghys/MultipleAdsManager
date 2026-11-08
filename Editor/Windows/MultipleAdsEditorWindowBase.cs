@@ -18,6 +18,7 @@ namespace Herghys.MultipleAdsManager.Editor
             MultipleAdsConfigGenerator.LoadCheck(showDialog: false);
             LoadOrCreateConfig();
             minSize = new Vector2(480, 520);
+            MultipleAdsUpdateManager.CheckForUpdates(silent: true);
         }
 
         protected virtual void OnFocus()
@@ -47,6 +48,8 @@ namespace Herghys.MultipleAdsManager.Editor
 
         public void DrawSharedHeader(string activeTabName, string sectionTitle, string sectionDescription)
         {
+            DrawUpdateBanner();
+
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
             EditorGUILayout.BeginHorizontal();
@@ -107,6 +110,48 @@ namespace Herghys.MultipleAdsManager.Editor
         public void DrawSharedHeader(string sectionTitle, string sectionDescription)
         {
             DrawSharedHeader(sectionTitle, sectionTitle, sectionDescription);
+        }
+
+        public static void DrawUpdateBanner()
+        {
+            if (!MultipleAdsUpdateManager.IsUpdateAvailable) return;
+
+            GUI.backgroundColor = new Color(0.2f, 0.6f, 1f, 0.35f);
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+            GUI.backgroundColor = Color.white;
+
+            EditorGUILayout.BeginHorizontal();
+            var icon = EditorGUIUtility.IconContent("d_Favorite") ?? EditorGUIUtility.IconContent("console.infoicon");
+            if (icon != null && icon.image != null)
+            {
+                GUILayout.Label(icon, GUILayout.Width(20), GUILayout.Height(20));
+            }
+
+            EditorGUILayout.LabelField(
+                $"New update available: v{MultipleAdsUpdateManager.LatestVersion} (Current: v{MultipleAdsUpdateManager.CurrentVersion})", 
+                EditorStyles.boldLabel
+            );
+
+            GUILayout.FlexibleSpace();
+
+            if (GUILayout.Button(new GUIContent("Update Package", "Update MultipleAdsManager to the latest version"), GUILayout.Width(110), GUILayout.Height(22)))
+            {
+                MultipleAdsUpdateManager.UpdatePackage();
+            }
+
+            if (GUILayout.Button(new GUIContent("Changelog", "View changelog and release notes on GitHub"), GUILayout.Width(80), GUILayout.Height(22)))
+            {
+                MultipleAdsUpdateManager.OpenChangelog();
+            }
+
+            if (GUILayout.Button(new GUIContent("✕", "Dismiss update notice for this version"), EditorStyles.miniButton, GUILayout.Width(22), GUILayout.Height(22)))
+            {
+                MultipleAdsUpdateManager.DismissUpdateBanner();
+            }
+
+            EditorGUILayout.EndHorizontal();
+            EditorGUILayout.EndVertical();
+            EditorGUILayout.Space(4);
         }
 
         private static readonly string[] NavTabs = new[]

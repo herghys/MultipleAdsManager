@@ -264,6 +264,7 @@ namespace Herghys.MultipleAdsManager.Editor
 
         public static void RequestAutoRescan()
         {
+            if (EditorUtility.scriptCompilationFailed) return;
             SessionState.SetBool(PendingAutoRescanSessionKey, true);
             MultipleAdsAutoConfigWatcher.ScheduleRescanWhenReady();
         }
@@ -297,6 +298,7 @@ namespace Herghys.MultipleAdsManager.Editor
         {
             if (isGenerating) return;
             if (BuildPipeline.isBuildingPlayer) return;
+            if (EditorUtility.scriptCompilationFailed) return;
             if (EditorApplication.isCompiling || EditorApplication.isUpdating)
             {
                 RequestAutoRescan();
@@ -326,7 +328,6 @@ namespace Herghys.MultipleAdsManager.Editor
                 var defineList = MultipleAdsBuildTargetCompat.GetDefinesList(target);
                 bool definesChanged = false;
                 bool needsAssetRefresh = false;
-                bool missingCompiledConfigType = false;
 
                 // 3. LoadCheck for every provider config
                 foreach (var module in MultipleAdsModuleManager.AllModules)
@@ -371,6 +372,7 @@ namespace Herghys.MultipleAdsManager.Editor
                     if (shouldHaveConfig)
                     {
                         string configPath = MultipleAdsPaths.GetProviderConfigAssetPath($"{module.Id}Config");
+                        bool assetFileExistsOnDisk = File.Exists(configPath);
                         var existingConfig = AssetDatabase.LoadAssetAtPath<BaseAdConfig>(configPath);
 
                         if (existingConfig == null)
@@ -384,12 +386,16 @@ namespace Herghys.MultipleAdsManager.Editor
 
                         if (existingConfig == null)
                         {
+                            if (assetFileExistsOnDisk)
+                            {
+                                // The asset file already exists on disk, but its C# script cannot be loaded/instantiated right now
+                                // (e.g. scripts are compiling or compilation failed).
+                                // Do not attempt to auto-create or log missing, wait for script compilation to complete.
+                                continue;
+                            }
+
                             Debug.Log($"[MultipleAds] LoadCheck: Missing AdsConfig for {module.DisplayName}. Auto-creating...");
                             existingConfig = EnsureProviderConfig(module, config, false);
-                            if (existingConfig == null)
-                            {
-                                missingCompiledConfigType = true;
-                            }
                         }
 
                         if (existingConfig != null && config.ProviderConfigs != null && !config.ProviderConfigs.Contains(existingConfig))
@@ -436,7 +442,7 @@ namespace Herghys.MultipleAdsManager.Editor
                     AssetDatabase.Refresh();
                 }
 
-                if (definesChanged || needsAssetRefresh || missingCompiledConfigType)
+                if (definesChanged || needsAssetRefresh)
                 {
                     RequestAutoRescan();
                 }
@@ -482,6 +488,7 @@ namespace Herghys.MultipleAdsManager.Editor
     {
         private static bool hasRunOnAppLoad = false;
         private static bool isPollingReady = false;
+        private static double lastScheduledRescanTime = 0;
 
         static MultipleAdsAutoConfigWatcher()
         {
@@ -490,6 +497,9 @@ namespace Herghys.MultipleAdsManager.Editor
 
             AssemblyReloadEvents.afterAssemblyReload -= OnAfterAssemblyReload;
             AssemblyReloadEvents.afterAssemblyReload += OnAfterAssemblyReload;
+
+            // Automatically check and patch installed module files upon package/domain reload
+            MultipleAdsModuleManager.CheckAndPatchInstalledModules(force: false, verbose: false);
 
             ScheduleRescanWhenReady();
         }
@@ -525,11 +535,25 @@ namespace Herghys.MultipleAdsManager.Editor
                 return;
             }
 
+            if (EditorUtility.scriptCompilationFailed)
+            {
+                isPollingReady = false;
+                return;
+            }
+
             if (EditorApplication.isCompiling || EditorApplication.isUpdating)
             {
                 EditorApplication.delayCall += TryRunScheduledRescan;
                 return;
             }
+
+            double now = EditorApplication.timeSinceStartup;
+            if (now - lastScheduledRescanTime < 0.5)
+            {
+                isPollingReady = false;
+                return;
+            }
+            lastScheduledRescanTime = now;
 
             isPollingReady = false;
 

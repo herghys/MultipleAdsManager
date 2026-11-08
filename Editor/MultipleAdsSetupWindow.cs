@@ -67,6 +67,7 @@ namespace Herghys.MultipleAdsManager.Editor
         private void OnEnable()
         {
             MultipleAdsConfigGenerator.LoadCheck(showDialog: false);
+            MultipleAdsUpdateManager.CheckForUpdates(silent: true);
             foldoutGlobalApp = EditorPrefs.GetBool(PrefFoldoutGlobalApp, true);
             foldoutPlacements = EditorPrefs.GetBool(PrefFoldoutPlacements, true);
             foldoutAdUnits = EditorPrefs.GetBool(PrefFoldoutAdUnits, true);
@@ -231,6 +232,8 @@ namespace Herghys.MultipleAdsManager.Editor
 
         private void DrawHeader()
         {
+            MultipleAdsEditorWindowBase.DrawUpdateBanner();
+
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
             EditorGUILayout.BeginHorizontal();

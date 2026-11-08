@@ -112,5 +112,25 @@ namespace Herghys.MultipleAdsManager.Editor
                 Selection.activeObject = config;
             }
         }
+
+        [MenuItem("Tools/MultipleAds/Check for Updates", false, 60)]
+        public static void CheckForUpdatesMenu()
+        {
+            MultipleAdsUpdateManager.CheckForUpdates(silent: false);
+        }
+
+        [MenuItem("Tools/MultipleAds/Patch Installed Modules (Repair Scripts)", false, 61)]
+        public static void PatchInstalledModulesMenu()
+        {
+            int patched = MultipleAdsModuleManager.CheckAndPatchInstalledModules(force: true, verbose: true);
+            EditorUtility.DisplayDialog(
+                "Module Script Patch",
+                $"Module synchronization complete.\n\n" +
+                $"• Package Version: v{MultipleAdsUpdateManager.CurrentVersion}\n" +
+                $"• Patched/updated: {patched} module script(s) in Assets/MultipleAds/Modules/\n" +
+                $"• Interface signatures are synchronized and up to date.",
+                "OK"
+            );
+        }
     }
 }

@@ -78,6 +78,13 @@ namespace Herghys.MultipleAdsManager.Editor
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Available Ad Networks (Assets/MultipleAds/Modules)", EditorStyles.boldLabel);
             GUILayout.FlexibleSpace();
+            if (GUILayout.Button(new GUIContent("Patch / Sync Modules", "Check and patch all installed module scripts to match the latest package interface and templates."), EditorStyles.miniButton, GUILayout.Width(130), GUILayout.Height(18)))
+            {
+                int patched = MultipleAdsModuleManager.CheckAndPatchInstalledModules(force: true, verbose: true);
+                RescanModules();
+                EditorUtility.DisplayDialog("Module Script Patch", $"Module synchronization complete.\n\nPatched/updated: {patched} module(s) to match package v{MultipleAdsUpdateManager.CurrentVersion}.", "OK");
+            }
+
             if (GUILayout.Button(new GUIContent("Scan All", "Scan all packages and assemblies for every module"), EditorStyles.miniButton, GUILayout.Width(80), GUILayout.Height(18)))
             {
                 RescanModules(clearOverrides: true);

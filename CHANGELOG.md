@@ -2,7 +2,7 @@
 
 All notable changes to this package will be documented in this file.
 
-## [1.0.3] - 2026-11-07
+## [1.0.4] - 2026-11-08
 ### Added
 - **Ad Open Callback Overloads**: Added dedicated `onOpened` action callback overloads across `IAdProvider`, `MultipleAdsManager`, and all provider implementations/templates (`GoogleAds`, `LevelPlay`, `UnityAds`, `AppLovin`, `Vungle`, `MockAds`):
   - `ShowInterstitial(Action onOpened, Action onClosed)`
@@ -10,9 +10,14 @@ All notable changes to this package will be documented in this file.
   - `ShowRewarded(Action onRewardEarned, Action onOpened, Action onClosed)`
   - `ShowRewarded(string adUnitId, string placement, Action onRewardEarned, Action onOpened, Action onClosed)`
   - `ShowRewarded(string adUnitId, string placement, Action<AdReward> onRewardEarned, Action onOpened, Action onClosed)`
+- **Module Script Auto-Patching on Update**: Added automatic detection and patching of installed module provider scripts in `Assets/MultipleAds/Modules/` whenever the package updates, interface changes, or on domain reload. Outdated scripts are automatically updated to match the latest template signatures (with `.bak` backups created if modified), eliminating CS0535 compilation errors.
+- **Package Update Checker ("Check for Updates")**: Introduced `MultipleAdsUpdateManager` with `Tools > MultipleAds > Check for Updates`, automatic update checks on opening any MultipleAds setup window, and a prominent in-window notification banner with "Update Package", "Changelog", and "Dismiss" controls.
+- **Manual Module Repair & Sync**: Added `Tools > MultipleAds > Patch Installed Modules (Repair Scripts)` and a "Patch / Sync Modules" button in `MultipleAdsModulesWindow`.
 - **Backwards Compatibility**: Preserved all original single-callback and parameterless overloads (`ShowInterstitial(Action onClosed = null)`, `ShowInterstitial(string adUnitId, string placement, Action onClosed = null)`, `ShowRewarded(Action onRewardEarned, Action onClosed = null)`, etc.) so existing code without `onOpened` remains fully supported without breaking changes.
+- **`TEST_ADS` Scripting Define**: Enforced editor-only test ad IDs gated behind `#if UNITY_EDITOR && TEST_ADS`, ensuring test IDs are strictly prohibited in build artifacts.
 
 ### Fixed
+- **LoadCheck Infinite Loop**: Fixed an issue where `LoadCheck` would run indefinitely and repeatedly log `[MultipleAds] LoadCheck: Missing AdsConfig for Google Mobile Ads (AdMob). Auto-creating...` when script compilation errors were present. Added `EditorUtility.scriptCompilationFailed` validation, disk existence checks before asset recreation, and rescan throttling.
 - Fixed compilation error `CS0535` across all ad providers and module templates by properly implementing both legacy and `onOpened` overloads for `IAdProvider`.
 
 ## [1.0.2] - 2026-11-04
