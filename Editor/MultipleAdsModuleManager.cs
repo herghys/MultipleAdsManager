@@ -354,28 +354,97 @@ namespace Herghys.MultipleAdsManager.Editor
             MultipleAdsConfigGenerator.RefreshAllOpenWindows();
         }
 
-        private static void InstallFromLocalTemplates(AdsModuleDefinition def, string targetDir)
+        public static string GetModuleTemplateDirectory(string moduleId)
         {
-            string templateDir = $"Packages/com.herghys.multipleadsmanager/Editor/ModuleTemplates/{def.Id}";
-            if (!Directory.Exists(templateDir))
+            // 1. Try from resolved package path (handles Library/PackageCache and embedded Packages)
+            string pkgRoot = MultipleAdsPaths.GetResolvedPackagePath();
+            if (!string.IsNullOrEmpty(pkgRoot))
             {
-                string fallbackDir = $"Assets/Plugins/Herghys/MultipleAds/Editor/ModuleTemplates/{def.Id}";
-                if (Directory.Exists(fallbackDir))
-                    templateDir = fallbackDir;
+                string p1 = Path.Combine(pkgRoot, "Editor", "ModuleTemplates", moduleId).Replace('\\', '/');
+                if (Directory.Exists(p1)) return p1;
+
+                string p2 = Path.Combine(pkgRoot, "ModuleTemplates", moduleId).Replace('\\', '/');
+                if (Directory.Exists(p2)) return p2;
             }
 
-            string configTemplate = Path.Combine(templateDir, $"{def.ConfigFileName}.txt").Replace('\\', '/');
-            string providerTemplate = Path.Combine(templateDir, $"{def.ProviderFileName}.txt").Replace('\\', '/');
+            // 2. Direct package path
+            string direct = $"Packages/com.herghys.multipleadsmanager/Editor/ModuleTemplates/{moduleId}";
+            if (Directory.Exists(direct)) return direct;
+            string fullDirect = Path.GetFullPath(direct).Replace('\\', '/');
+            if (Directory.Exists(fullDirect)) return fullDirect;
+
+            // 3. Fallback: Assets/Plugins legacy
+            string fallbackDir = $"Assets/Plugins/Herghys/MultipleAds/Editor/ModuleTemplates/{moduleId}";
+            if (Directory.Exists(fallbackDir)) return fallbackDir;
+
+            // 4. Fallback: Search AssetDatabase for any module template folder
+            try
+            {
+                string[] guids = AssetDatabase.FindAssets($"{moduleId}Provider t:TextAsset");
+                if (guids != null && guids.Length > 0)
+                {
+                    string assetPath = AssetDatabase.GUIDToAssetPath(guids[0]);
+                    string dir = Path.GetDirectoryName(assetPath).Replace('\\', '/');
+                    string fullDir = Path.GetFullPath(dir).Replace('\\', '/');
+                    if (Directory.Exists(fullDir)) return fullDir;
+                    if (Directory.Exists(dir)) return dir;
+                }
+            }
+            catch { }
+
+            return direct;
+        }
+
+        public static string GetModuleTemplateFile(string moduleId, string fileName)
+        {
+            string dir = GetModuleTemplateDirectory(moduleId);
+            if (!string.IsNullOrEmpty(dir))
+            {
+                string path = Path.Combine(dir, fileName).Replace('\\', '/');
+                if (File.Exists(path)) return path;
+            }
+
+            // Search AssetDatabase by file name if still not found
+            try
+            {
+                string searchName = Path.GetFileNameWithoutExtension(fileName);
+                string[] guids = AssetDatabase.FindAssets(searchName);
+                foreach (var guid in guids)
+                {
+                    string assetPath = AssetDatabase.GUIDToAssetPath(guid);
+                    if (assetPath.EndsWith(fileName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        string fullPath = Path.GetFullPath(assetPath).Replace('\\', '/');
+                        if (File.Exists(fullPath)) return fullPath;
+                        if (File.Exists(assetPath)) return assetPath;
+                    }
+                }
+            }
+            catch { }
+
+            return null;
+        }
+
+        private static string NormalizeCode(string code)
+        {
+            if (string.IsNullOrEmpty(code)) return "";
+            return code.Replace("\r\n", "\n").Trim();
+        }
+
+        private static void InstallFromLocalTemplates(AdsModuleDefinition def, string targetDir)
+        {
+            string configTemplate = GetModuleTemplateFile(def.Id, $"{def.ConfigFileName}.txt");
+            string providerTemplate = GetModuleTemplateFile(def.Id, $"{def.ProviderFileName}.txt");
 
             string dstConfig = Path.Combine(targetDir, def.ConfigFileName).Replace('\\', '/');
             string dstProvider = Path.Combine(targetDir, def.ProviderFileName).Replace('\\', '/');
 
-            if (File.Exists(configTemplate))
+            if (!string.IsNullOrEmpty(configTemplate) && File.Exists(configTemplate))
             {
                 File.Copy(configTemplate, dstConfig, true);
             }
 
-            if (File.Exists(providerTemplate))
+            if (!string.IsNullOrEmpty(providerTemplate) && File.Exists(providerTemplate))
             {
                 File.Copy(providerTemplate, dstProvider, true);
             }
@@ -415,16 +484,30 @@ namespace Herghys.MultipleAdsManager.Editor
             if (def == null || def.IsDefault) return false;
 
             string dstProvider = Path.Combine(targetDir, def.ProviderFileName).Replace('\\', '/');
-            if (!File.Exists(dstProvider)) return false;
+            if (!File.Exists(dstProvider)) return true;
 
-            // 1. Check interface method signatures (e.g. onOpened overloads introduced in 1.0.4)
             string providerCode = File.ReadAllText(dstProvider);
-            if (!providerCode.Contains("onOpened") || !providerCode.Contains("Action onOpened"))
+
+            // 1. Check if provider code is missing key interface methods
+            if (!providerCode.Contains("ShowInterstitial(Action onClosed") ||
+                !providerCode.Contains("ShowInterstitial(Action onOpened, Action onClosed)") ||
+                !providerCode.Contains("ShowRewarded(Action onRewardEarned, Action onOpened, Action onClosed)"))
             {
                 return true;
             }
 
-            // 2. Check package version comparison
+            // 2. Compare against package template content
+            string providerTemplate = GetModuleTemplateFile(def.Id, $"{def.ProviderFileName}.txt");
+            if (!string.IsNullOrEmpty(providerTemplate) && File.Exists(providerTemplate))
+            {
+                string templateCode = File.ReadAllText(providerTemplate);
+                if (NormalizeCode(providerCode) != NormalizeCode(templateCode))
+                {
+                    return true;
+                }
+            }
+
+            // 3. Check package version comparison
             string currentPkgVersion = MultipleAdsUpdateManager.CurrentVersion;
             string recordedVersion = GetInstalledModulesVersion();
             if (!string.IsNullOrEmpty(recordedVersion) && MultipleAdsUpdateManager.CompareVersions(currentPkgVersion, recordedVersion) > 0)
@@ -435,53 +518,48 @@ namespace Herghys.MultipleAdsManager.Editor
             return false;
         }
 
-        public static bool PatchModule(AdsModuleDefinition def, string targetDir, bool createBackup = true)
+        public static bool PatchModule(AdsModuleDefinition def, string targetDir, bool createBackup = true, bool force = false)
         {
             if (def == null || def.IsDefault) return false;
 
-            string templateDir = $"Packages/com.herghys.multipleadsmanager/Editor/ModuleTemplates/{def.Id}";
-            if (!Directory.Exists(templateDir))
-            {
-                string fallbackDir = $"Assets/Plugins/Herghys/MultipleAds/Editor/ModuleTemplates/{def.Id}";
-                if (Directory.Exists(fallbackDir))
-                    templateDir = fallbackDir;
-            }
+            string providerTemplate = GetModuleTemplateFile(def.Id, $"{def.ProviderFileName}.txt");
+            string configTemplate = GetModuleTemplateFile(def.Id, $"{def.ConfigFileName}.txt");
 
-            string providerTemplate = Path.Combine(templateDir, $"{def.ProviderFileName}.txt").Replace('\\', '/');
-            string configTemplate = Path.Combine(templateDir, $"{def.ConfigFileName}.txt").Replace('\\', '/');
+            if (string.IsNullOrEmpty(providerTemplate) || !File.Exists(providerTemplate))
+            {
+                Debug.LogWarning($"[MultipleAdsModuleManager] Provider template not found for module '{def.Id}'.");
+                return false;
+            }
 
             string dstProvider = Path.Combine(targetDir, def.ProviderFileName).Replace('\\', '/');
             string dstConfig = Path.Combine(targetDir, def.ConfigFileName).Replace('\\', '/');
 
             bool patched = false;
 
-            if (File.Exists(providerTemplate))
+            string newProviderCode = File.ReadAllText(providerTemplate);
+            string oldProviderCode = File.Exists(dstProvider) ? File.ReadAllText(dstProvider) : "";
+
+            if (force || NormalizeCode(oldProviderCode) != NormalizeCode(newProviderCode))
             {
-                string newProviderCode = File.ReadAllText(providerTemplate);
-                string oldProviderCode = File.Exists(dstProvider) ? File.ReadAllText(dstProvider) : "";
-
-                if (oldProviderCode != newProviderCode)
+                if (createBackup && File.Exists(dstProvider))
                 {
-                    if (createBackup && File.Exists(dstProvider))
+                    try
                     {
-                        try
-                        {
-                            File.Copy(dstProvider, dstProvider + ".bak", true);
-                        }
-                        catch { }
+                        File.Copy(dstProvider, dstProvider + ".bak", true);
                     }
-
-                    File.WriteAllText(dstProvider, newProviderCode);
-                    patched = true;
+                    catch { }
                 }
+
+                File.WriteAllText(dstProvider, newProviderCode);
+                patched = true;
             }
 
-            if (File.Exists(configTemplate))
+            if (!string.IsNullOrEmpty(configTemplate) && File.Exists(configTemplate))
             {
                 string newConfigCode = File.ReadAllText(configTemplate);
                 string oldConfigCode = File.Exists(dstConfig) ? File.ReadAllText(dstConfig) : "";
 
-                if (oldConfigCode != newConfigCode)
+                if (force || NormalizeCode(oldConfigCode) != NormalizeCode(newConfigCode))
                 {
                     if (createBackup && File.Exists(dstConfig))
                     {
@@ -513,17 +591,17 @@ namespace Herghys.MultipleAdsManager.Editor
                 if (!Directory.Exists(targetDir)) continue;
 
                 string dstProvider = Path.Combine(targetDir, module.ProviderFileName).Replace('\\', '/');
-                if (!File.Exists(dstProvider)) continue;
+                if (!File.Exists(dstProvider) && !force) continue;
 
                 bool needsPatch = force || IsModuleScriptOutdated(module, targetDir);
                 if (needsPatch)
                 {
-                    if (PatchModule(module, targetDir))
+                    if (PatchModule(module, targetDir, createBackup: true, force: force))
                     {
                         patchedCount++;
                         if (verbose)
                         {
-                            Debug.Log($"[MultipleAdsModuleManager] Patched module '{module.DisplayName}' scripts to match package version {currentPkgVersion}.");
+                            Debug.Log($"[MultipleAdsModuleManager] Regenerated module '{module.DisplayName}' scripts from template to match package version {currentPkgVersion}.");
                         }
                     }
                 }

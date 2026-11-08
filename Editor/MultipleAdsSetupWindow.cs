@@ -253,6 +253,17 @@ namespace Herghys.MultipleAdsManager.Editor
                 RegenerateConfig();
             }
 
+            if (GUILayout.Button(new GUIContent("Regenerate Module", "Regenerate and synchronize all installed module scripts in Assets/MultipleAds/Modules/ from package templates."), GUILayout.Height(22)))
+            {
+                int patched = MultipleAdsModuleManager.CheckAndPatchInstalledModules(force: true, verbose: true);
+                string msg = patched > 0
+                    ? $"Module regeneration complete.\n\nRegenerated: {patched} module(s) from package templates (v{MultipleAdsUpdateManager.CurrentVersion})."
+                    : "All installed modules are already up to date with package templates.";
+                EditorUtility.DisplayDialog("Regenerate Module", msg, "OK");
+                TriggerManualScan();
+                Repaint();
+            }
+
             if (GUILayout.Button(new GUIContent("Select Config", "Select and edit the MultipleAdsManager Config asset in Inspector."), GUILayout.Height(22)))
             {
                 if (mainConfig == null)
@@ -604,8 +615,17 @@ namespace Herghys.MultipleAdsManager.Editor
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Available Ad Networks", EditorStyles.boldLabel);
             GUILayout.FlexibleSpace();
-            if (GUILayout.Button(new GUIContent("Scan All Modules", "Scan all packages and assemblies for every module"), EditorStyles.miniButton, GUILayout.Width(130), GUILayout.Height(18)))
+            if (GUILayout.Button(new GUIContent("Scan All Modules", "Scan all packages and assemblies for every module"), EditorStyles.miniButton, GUILayout.Width(125), GUILayout.Height(18)))
             {
+                RescanModules(clearOverrides: true);
+            }
+            if (GUILayout.Button(new GUIContent("Regenerate Module", "Regenerate and synchronize all installed module scripts in Assets/MultipleAds/Modules/ from package templates."), EditorStyles.miniButton, GUILayout.Width(130), GUILayout.Height(18)))
+            {
+                int patched = MultipleAdsModuleManager.CheckAndPatchInstalledModules(force: true, verbose: true);
+                string msg = patched > 0
+                    ? $"Module regeneration complete.\n\nRegenerated: {patched} module(s) from package templates (v{MultipleAdsUpdateManager.CurrentVersion})."
+                    : "All installed modules are already up to date with package templates.";
+                EditorUtility.DisplayDialog("Regenerate Module", msg, "OK");
                 RescanModules(clearOverrides: true);
             }
             EditorGUILayout.EndHorizontal();

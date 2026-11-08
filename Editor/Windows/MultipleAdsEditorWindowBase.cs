@@ -71,6 +71,17 @@ namespace Herghys.MultipleAdsManager.Editor
                 Repaint();
             }
 
+            if (GUILayout.Button(new GUIContent("Regenerate Module", "Regenerate and synchronize all installed module scripts in Assets/MultipleAds/Modules/ from package templates."), GUILayout.Height(22)))
+            {
+                int patched = MultipleAdsModuleManager.CheckAndPatchInstalledModules(force: true, verbose: true);
+                string msg = patched > 0
+                    ? $"Module regeneration complete.\n\nRegenerated: {patched} module(s) from package templates (v{MultipleAdsUpdateManager.CurrentVersion})."
+                    : "All installed modules are already up to date with package templates.";
+                EditorUtility.DisplayDialog("Regenerate Module", msg, "OK");
+                TriggerManualScan();
+                Repaint();
+            }
+
             if (GUILayout.Button(new GUIContent("Select Config", "Select and edit the MultipleAdsManager Config asset in Inspector."), GUILayout.Height(22)))
             {
                 if (mainConfig == null)

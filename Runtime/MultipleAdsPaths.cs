@@ -36,15 +36,54 @@ namespace Herghys.MultipleAdsManager.Runtime
         public static string GetPackageProguardTemplatesDirectory() => PackageProguardTemplatesPath;
         public static string GetPackageManifestTemplatesDirectory() => PackageManifestTemplatesPath;
 
+        public static string GetResolvedPackagePath()
+        {
+#if UNITY_EDITOR
+            try
+            {
+                var pkgInfo = UnityEditor.PackageManager.PackageInfo.FindForAssembly(typeof(MultipleAdsPaths).Assembly);
+                if (pkgInfo != null && !string.IsNullOrEmpty(pkgInfo.resolvedPath))
+                {
+                    return pkgInfo.resolvedPath.Replace('\\', '/');
+                }
+            }
+            catch { }
+#endif
+            return Path.GetFullPath("Packages/com.herghys.multipleadsmanager").Replace('\\', '/');
+        }
+
         public static string ResolveTemplatePath(string subDir, string fileName)
         {
+#if UNITY_EDITOR
+            try
+            {
+                string pkgRoot = GetResolvedPackagePath();
+                if (!string.IsNullOrEmpty(pkgRoot))
+                {
+                    string p1 = Path.Combine(pkgRoot, "Editor", "Templates", subDir, fileName).Replace('\\', '/');
+                    if (File.Exists(p1)) return p1;
+
+                    string p2 = Path.Combine(pkgRoot, "Editor", subDir, fileName).Replace('\\', '/');
+                    if (File.Exists(p2)) return p2;
+
+                    string p3 = Path.Combine(pkgRoot, subDir, fileName).Replace('\\', '/');
+                    if (File.Exists(p3)) return p3;
+                }
+            }
+            catch { }
+#endif
+
             // 1. Primary: Package Editor Templates
             string packageEditorPath = $"{TemplatesPath}/{subDir}/{fileName}";
             if (File.Exists(packageEditorPath)) return packageEditorPath;
+            string fullPackageEditorPath = Path.GetFullPath(packageEditorPath).Replace('\\', '/');
+            if (File.Exists(fullPackageEditorPath)) return fullPackageEditorPath;
 
             // 2. Package Root Templates
             string packageRootPath = $"Packages/com.herghys.multipleadsmanager/Templates/{subDir}/{fileName}";
             if (File.Exists(packageRootPath)) return packageRootPath;
+            string fullPackageRootPath = Path.GetFullPath(packageRootPath).Replace('\\', '/');
+            if (File.Exists(fullPackageRootPath)) return fullPackageRootPath;
 
             // 3. Legacy project override (if user had custom templates in Assets)
             string legacyProjectPath = $"{LegacyProjectTemplatesPath}/{subDir}/{fileName}";

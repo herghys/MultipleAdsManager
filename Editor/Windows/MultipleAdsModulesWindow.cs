@@ -78,14 +78,14 @@ namespace Herghys.MultipleAdsManager.Editor
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Available Ad Networks (Assets/MultipleAds/Modules)", EditorStyles.boldLabel);
             GUILayout.FlexibleSpace();
-            if (GUILayout.Button(new GUIContent("Regenerate Module Script", "Regenerate and synchronize all installed module scripts to match the latest package interface and templates."), EditorStyles.miniButton, GUILayout.Width(155), GUILayout.Height(18)))
+            if (GUILayout.Button(new GUIContent("Regenerate Module", "Regenerate and synchronize all installed module scripts to match the latest package interface and templates."), EditorStyles.miniButton, GUILayout.Width(130), GUILayout.Height(18)))
             {
                 int patched = MultipleAdsModuleManager.CheckAndPatchInstalledModules(force: true, verbose: true);
                 RescanModules();
                 string msg = patched > 0
-                    ? $"Module script regeneration complete.\n\nRegenerated: {patched} module(s) to match package v{MultipleAdsUpdateManager.CurrentVersion}."
+                    ? $"Module regeneration complete.\n\nRegenerated: {patched} module(s) to match package v{MultipleAdsUpdateManager.CurrentVersion}."
                     : $"No installed modules were found to regenerate in Assets/MultipleAds/Modules/.";
-                EditorUtility.DisplayDialog("Regenerate Module Script", msg, "OK");
+                EditorUtility.DisplayDialog("Regenerate Module", msg, "OK");
             }
 
             if (GUILayout.Button(new GUIContent("Scan All", "Scan all packages and assemblies for every module"), EditorStyles.miniButton, GUILayout.Width(80), GUILayout.Height(18)))

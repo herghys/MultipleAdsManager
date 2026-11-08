@@ -113,19 +113,25 @@ namespace Herghys.MultipleAdsManager.Editor
             }
         }
 
-        [MenuItem("Tools/MultipleAds/Regenerate Module Script", false, 44)]
-        public static void RegenerateModuleScriptMenu()
+        [MenuItem("Tools/MultipleAds/Regenerate Module", false, 44)]
+        public static void RegenerateModuleMenu()
         {
             int patched = MultipleAdsModuleManager.CheckAndPatchInstalledModules(force: true, verbose: true);
             string message = patched > 0
-                ? $"Successfully regenerated {patched} module script(s) in Assets/MultipleAds/Modules/ to match package v{MultipleAdsUpdateManager.CurrentVersion}.\n\nAll provider interfaces and config templates are refreshed and synchronized."
-                : $"No installed modules were found in Assets/MultipleAds/Modules/ to regenerate.\n\nYou can add modules via 'Tools > MultipleAds > Ad Network Modules'.";
+                ? $"Successfully regenerated {patched} module script(s) in Assets/MultipleAds/Modules/ to match package templates (v{MultipleAdsUpdateManager.CurrentVersion}).\n\nAll provider interfaces and config templates are refreshed and synchronized."
+                : $"Installed module scripts in Assets/MultipleAds/Modules/ are already synchronized with package templates.\n\nYou can add modules via 'Tools > MultipleAds > Ad Network Modules'.";
 
             EditorUtility.DisplayDialog(
-                "Regenerate Module Script",
+                "Regenerate Module",
                 message,
                 "OK"
             );
+        }
+
+        [MenuItem("Tools/MultipleAds/Regenerate Module Script", false, 45)]
+        public static void RegenerateModuleScriptMenu()
+        {
+            RegenerateModuleMenu();
         }
 
         [MenuItem("Tools/MultipleAds/Check for Updates", false, 60)]

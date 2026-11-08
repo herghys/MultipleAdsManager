@@ -511,6 +511,7 @@ namespace Herghys.MultipleAdsManager.Editor
                 (args.changedTo != null && args.changedTo.Count > 0))
             {
                 MultipleAdsPackageManager.InvalidatePackageCache();
+                MultipleAdsModuleManager.CheckAndPatchInstalledModules(force: false, verbose: true);
                 MultipleAdsConfigGenerator.RequestAutoRescan();
             }
         }
