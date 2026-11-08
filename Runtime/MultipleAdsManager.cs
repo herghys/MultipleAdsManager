@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 using Herghys.MultipleAdsManager.Runtime;
@@ -424,11 +424,13 @@ namespace Herghys.MultipleAdsManager
 #endif
         }
 
-        public void ShowInterstitial(Action onClosed) => ShowInterstitial(null, null, onClosed);
-        public void ShowInterstitial(Action onOpened, Action onClosed) => ShowInterstitial(null, onOpened, onClosed);
+        public void ShowInterstitial() => ShowInterstitial((string)null, null, null);
+        public void ShowInterstitial(string placement) => ShowInterstitial(placement, null, null);
+        public void ShowInterstitial(Action onClosed) => ShowInterstitial((string)null, null, onClosed);
+        public void ShowInterstitial(Action onOpened, Action onClosed) => ShowInterstitial((string)null, onOpened, onClosed);
         public void ShowInterstitial(string placement, Action onClosed) => ShowInterstitial(placement, null, onClosed);
 
-        public void ShowInterstitial(string placement = null, Action onOpened = null, Action onClosed = null)
+        public void ShowInterstitial(string placement, Action onOpened, Action onClosed)
         {
             placement = ResolvePlacement(IAdsType.Interstitial, placement);
             var entry = config != null ? config.GetAdEntry(IAdsType.Interstitial, placement) : null;
@@ -527,22 +529,14 @@ namespace Herghys.MultipleAdsManager
 #endif
         }
 
-        public void ShowRewarded(Action onRewardEarned, Action onClosed = null)
-        {
-            ShowRewarded(null, onRewardEarned, null, onClosed);
-        }
-
-        public void ShowRewarded(Action onRewardEarned, Action onOpened, Action onClosed)
-        {
-            ShowRewarded(null, onRewardEarned, onOpened, onClosed);
-        }
-
-        public void ShowRewarded(string placement, Action onRewardEarned, Action onClosed)
-        {
-            ShowRewarded(placement, onRewardEarned, null, onClosed);
-        }
-
-        public void ShowRewarded(string placement = null, Action onRewardEarned = null, Action onOpened = null, Action onClosed = null)
+        public void ShowRewarded() => ShowRewarded((string)null, (Action<AdReward>)null, null, null);
+        public void ShowRewarded(string placement) => ShowRewarded(placement, (Action<AdReward>)null, null, null);
+        public void ShowRewarded(Action onRewardEarned) => ShowRewarded((string)null, onRewardEarned, null);
+        public void ShowRewarded(Action onRewardEarned, Action onClosed) => ShowRewarded((string)null, onRewardEarned, onClosed);
+        public void ShowRewarded(Action onRewardEarned, Action onOpened, Action onClosed) => ShowRewarded((string)null, onRewardEarned, onOpened, onClosed);
+        public void ShowRewarded(string placement, Action onRewardEarned) => ShowRewarded(placement, onRewardEarned, null, null);
+        public void ShowRewarded(string placement, Action onRewardEarned, Action onClosed) => ShowRewarded(placement, onRewardEarned, null, onClosed);
+        public void ShowRewarded(string placement, Action onRewardEarned, Action onOpened, Action onClosed)
         {
             ShowRewarded(
                 placement: placement,
@@ -551,26 +545,11 @@ namespace Herghys.MultipleAdsManager
                 onClosed: onClosed);
         }
 
-        public void ShowRewarded(Action<AdReward> onRewardEarned, Action onClosed = null)
-        {
-            ShowRewarded(null, onRewardEarned, null, onClosed);
-        }
-
-        public void ShowRewarded(Action<AdReward> onRewardEarned, Action onOpened, Action onClosed)
-        {
-            ShowRewarded(null, onRewardEarned, onOpened, onClosed);
-        }
-
-        public void ShowRewarded(string placement, Action<AdReward> onRewardEarned)
-        {
-            ShowRewarded(placement, onRewardEarned, null, null);
-        }
-
-        public void ShowRewarded(string placement, Action<AdReward> onRewardEarned, Action onClosed)
-        {
-            ShowRewarded(placement, onRewardEarned, null, onClosed);
-        }
-
+        public void ShowRewarded(Action<AdReward> onRewardEarned) => ShowRewarded((string)null, onRewardEarned, null, null);
+        public void ShowRewarded(Action<AdReward> onRewardEarned, Action onClosed) => ShowRewarded((string)null, onRewardEarned, null, onClosed);
+        public void ShowRewarded(Action<AdReward> onRewardEarned, Action onOpened, Action onClosed) => ShowRewarded((string)null, onRewardEarned, onOpened, onClosed);
+        public void ShowRewarded(string placement, Action<AdReward> onRewardEarned) => ShowRewarded(placement, onRewardEarned, null, null);
+        public void ShowRewarded(string placement, Action<AdReward> onRewardEarned, Action onClosed) => ShowRewarded(placement, onRewardEarned, null, onClosed);
         public void ShowRewarded(string placement, Action<AdReward> onRewardEarned, Action onOpened, Action onClosed)
         {
             placement = ResolvePlacement(IAdsType.Rewarded, placement);
