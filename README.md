@@ -26,7 +26,7 @@ Choose one of the installation methods below:
    ```
    *(Optional) To target a specific release tag:*
    ```text
-   https://github.com/herghys/MultipleAdsManager.git#1.0.2
+   https://github.com/herghys/MultipleAdsManager.git#1.0.4
    ```
 5. Click **Add**.
 
@@ -43,7 +43,7 @@ Add the package to your project's `Packages/manifest.json` under `dependencies`:
 
 ---
 
-### 2. Via Tarball (`.tgz`)
+### 2. Via Tarball (`.tgz`) - Currently Unavailable
 
 1. Go to the [GitHub Releases](https://github.com/herghys/MultipleAdsManager/releases) page.
 2. Download the latest `.tgz` package file (e.g., `com.herghys.multipleadsmanager-1.0.2.tgz`).
@@ -53,7 +53,7 @@ Add the package to your project's `Packages/manifest.json` under `dependencies`:
 
 ---
 
-### 3. Via Unity Package (`.unitypackage`)
+### 3. Via Unity Package (`.unitypackage`) - Currently Unavailable
 
 1. Go to the [GitHub Releases](https://github.com/herghys/MultipleAdsManager/releases) page.
 2. Download the `.unitypackage` file (e.g., `MultipleAdsManager-1.0.2.unitypackage`).
